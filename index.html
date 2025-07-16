@@ -1,15 +1,102 @@
-
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Top.emisoras</title>
+    
+    <!-- Primary Meta Tags -->
+    <title>Top.emisoras - Radio Online Gratis | Emisoras Colombianas y Latinas</title>
+    <meta name="title" content="Top.emisoras - Radio Online Gratis | Emisoras Colombianas y Latinas" />
+    <meta name="description" content="Escucha radio online gratis. Miles de emisoras colombianas, latinas y del mundo. Búsqueda por voz, favoritos y streaming en alta calidad. Radio en vivo 24/7." />
+    <meta name="keywords" content="radio online, radio gratis, emisoras colombianas, radio latina, streaming radio, radio en vivo, música online, radio internet, emisoras gratis, radio colombiana, radio latinoamericana, búsqueda por voz, favoritos radio" />
+    <meta name="author" content="Top.emisoras" />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+    <meta name="googlebot" content="index, follow" />
+    <link rel="canonical" href="https://top.emisoras.com" />
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://top.emisoras.com" />
+    <meta property="og:title" content="Top.emisoras - Radio Online Gratis | Emisoras Colombianas y Latinas" />
+    <meta property="og:description" content="Escucha radio online gratis. Miles de emisoras colombianas, latinas y del mundo. Búsqueda por voz, favoritos y streaming en alta calidad. Radio en vivo 24/7." />
+    <meta property="og:image" content="https://www.webcincodev.com/blog/wp-content/uploads/2025/07/radio.gratis-1.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Top.emisoras - Radio Online Gratis con emisoras colombianas y latinas" />
+    <meta property="og:site_name" content="Top.emisoras" />
+    <meta property="og:locale" content="es_CO" />
+    
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:url" content="https://top.emisoras.com" />
+    <meta property="twitter:title" content="Top.emisoras - Radio Online Gratis | Emisoras Colombianas y Latinas" />
+    <meta property="twitter:description" content="Escucha radio online gratis. Miles de emisoras colombianas, latinas y del mundo. Búsqueda por voz, favoritos y streaming en alta calidad. Radio en vivo 24/7." />
+    <meta property="twitter:image" content="https://www.webcincodev.com/blog/wp-content/uploads/2025/07/radio.gratis-1.png" />
+    <meta property="twitter:image:alt" content="Top.emisoras - Radio Online Gratis con emisoras colombianas y latinas" />
+    
+    <!-- Additional SEO Meta Tags -->
+    <meta name="theme-color" content="#3b82f6" />
+    <meta name="msapplication-TileColor" content="#3b82f6" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Top.emisoras" />
+    <meta name="application-name" content="Top.emisoras" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+    
+    <!-- Preconnect for performance -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    
+    <!-- Structured Data (JSON-LD) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "Top.emisoras",
+      "description": "Aplicación web para escuchar radio online gratis con emisoras colombianas, latinas y del mundo",
+      "url": "https://top.emisoras.com",
+      "applicationCategory": "EntertainmentApplication",
+      "operatingSystem": "Web Browser",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "featureList": [
+        "Radio online gratis",
+        "Emisoras colombianas",
+        "Radio latina",
+        "Búsqueda por voz",
+        "Lista de favoritos",
+        "Streaming en alta calidad",
+        "Radio en vivo 24/7"
+      ],
+      "screenshot": "https://www.webcincodev.com/blog/wp-content/uploads/2025/07/radio.gratis-1.png",
+      "author": {
+        "@type": "Organization",
+        "name": "Top.emisoras"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "Top.emisoras",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://top.emisoras.com/logo.png"
+        }
+      }
+    }
+    </script>
+    
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
-      // Note: For production, it's recommended to install Tailwind CSS as a PostCSS plugin.
-      // https://tailwindcss.com/docs/installation
       tailwind.config = {
         darkMode: 'class',
         theme: {
@@ -33,20 +120,24 @@
         }
       }
     </script>
-  <script type="importmap">
-{
-  "imports": {
-    "react-dom/": "https://esm.sh/react-dom@^19.1.0/",
-    "react/": "https://esm.sh/react@^19.1.0/",
-    "react": "https://esm.sh/react@^19.1.0"
-  }
-}
-</script>
-<link rel="stylesheet" href="/index.css">
-</head>
+    
+    <!-- Import Maps -->
+    <script type="importmap">
+    {
+      "imports": {
+        "react-dom/": "https://esm.sh/react-dom@^19.1.0/",
+        "react/": "https://esm.sh/react@^19.1.0/",
+        "react": "https://esm.sh/react@^19.1.0"
+      }
+    }
+    </script>
+    
+    <!-- Styles -->
+    <link rel="stylesheet" href="/index.css">
+  </head>
   <body class="bg-gray-100 dark:bg-gray-900 transition-colors duration-300">
     <div id="root"></div>
     <script type="module" src="/index.jsx"></script>
-  <script type="module" src="/index.tsx"></script>
-</body>
+    <script type="module" src="/index.tsx"></script>
+  </body>
 </html>

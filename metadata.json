@@ -1,8 +1,43 @@
 {
-  "name": "Top.emisoras",
-  "description": "An application that allows users to listen to radio stations from around the world for free, featuring powerful search, filtering, and a favorites list.",
+  "name": "Top.emisoras - Radio Online Gratis",
+  "short_name": "Top.emisoras",
+  "description": "Escucha radio online gratis. Miles de emisoras colombianas, latinas y del mundo. Búsqueda por voz, favoritos y streaming en alta calidad. Radio en vivo 24/7.",
+  "keywords": "radio online, radio gratis, emisoras colombianas, radio latina, streaming radio, radio en vivo, música online, radio internet, emisoras gratis, radio colombiana, radio latinoamericana, búsqueda por voz, favoritos radio",
+  "author": "Top.emisoras",
+  "version": "1.0.0",
+  "homepage": "https://top.emisoras.com",
+  "repository": "https://github.com/topemisoras/radio-app",
+  "license": "MIT",
   "requestFramePermissions": [
     "microphone"
   ],
-  "prompt": ""
+  "prompt": "",
+  "features": [
+    "Radio online gratis",
+    "Emisoras colombianas",
+    "Radio latina",
+    "Búsqueda por voz",
+    "Lista de favoritos",
+    "Streaming en alta calidad",
+    "Radio en vivo 24/7",
+    "Interfaz responsive",
+    "Modo oscuro",
+    "Búsqueda avanzada"
+  ],
+  "categories": [
+    "entertainment",
+    "music",
+    "radio",
+    "streaming"
+  ],
+  "languages": [
+    "es",
+    "en"
+  ],
+  "target_audience": [
+    "Colombia",
+    "Latinoamérica",
+    "Estados Unidos",
+    "España"
+  ]
 }

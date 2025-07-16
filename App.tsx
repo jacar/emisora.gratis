@@ -10,6 +10,7 @@ import Modal from './components/Modal.jsx';
 import Spinner from './components/Spinner.jsx';
 import HeroSlider from './components/HeroSlider.jsx';
 import FloatingNav from './components/FloatingNav.jsx';
+import SEOHead from './components/SEOHead.jsx';
 import { HeartIcon, SunIcon, MoonIcon, SearchIcon, MenuIcon, GithubIcon, BriefcaseIcon, WhatsAppIcon, MicrophoneIcon, XIcon, ChevronUpIcon } from './components/Icons.jsx';
 import type { Station } from './types';
 
@@ -567,6 +568,14 @@ export default function App() {
 
   return (
     <div className="min-h-screen text-gray-800 dark:text-gray-200 font-sans flex flex-col overflow-x-hidden">
+      <SEOHead 
+        currentStation={currentStation ? {
+          name: currentStation.name,
+          country: currentStation.country || 'Unknown',
+          genre: currentStation.tags || 'Radio',
+          url: currentStation.url_resolved || currentStation.url
+        } : undefined}
+      />
       <header className="sticky top-0 z-30 bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg shadow-sm">
         {playbackErrorMsg && (
           <div className="w-full bg-red-500 text-white text-center py-2 font-semibold animate-pulse">

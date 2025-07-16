@@ -1,0 +1,24 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Ocultar barra de scroll lateral */
+::-webkit-scrollbar {
+  width: 0px;
+  background: transparent;
+}
+
+/* Para Firefox */
+html {
+  scrollbar-width: none;
+}
+
+/* Para IE/Edge */
+body {
+  -ms-overflow-style: none;
+}
+
+/* Scroll suave */
+html {
+  scroll-behavior: smooth;
+} 

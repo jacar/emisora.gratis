@@ -10,7 +10,7 @@ import Modal from './components/Modal.jsx';
 import Spinner from './components/Spinner.jsx';
 import HeroSlider from './components/HeroSlider.jsx';
 import FloatingNav from './components/FloatingNav.jsx';
-import { HeartIcon, SunIcon, MoonIcon, SearchIcon, MenuIcon, GithubIcon, BriefcaseIcon, WhatsAppIcon, MicrophoneIcon, XIcon } from './components/Icons.jsx';
+import { HeartIcon, SunIcon, MoonIcon, SearchIcon, MenuIcon, GithubIcon, BriefcaseIcon, WhatsAppIcon, MicrophoneIcon, XIcon, ChevronUpIcon } from './components/Icons.jsx';
 import type { Station } from './types';
 
 const PAGE_SIZE = 10; // Reducido de 20 a 10 para carga más rápida
@@ -124,6 +124,8 @@ export default function App() {
     return localStorage.getItem('serviceBannerClosed') !== 'true';
   });
   
+  const [showScrollTop, setShowScrollTop] = useState(false);
+  
   const offset = useRef(0);
   const [hasMore, setHasMore] = useState(true);
 
@@ -164,6 +166,20 @@ export default function App() {
     setShowServiceBanner(true);
     localStorage.removeItem('serviceBannerClosed');
   };
+
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Detectar scroll para mostrar/ocultar flecha
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowScrollTop(window.scrollY > 300);
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   const fetchStationsCallback = useCallback(async (apiCall: () => Promise<Station[]>, isNewSearch: boolean) => {
     if(isNewSearch) {
@@ -550,7 +566,7 @@ export default function App() {
   }, [debouncedSearchTerm, stations]);
 
   return (
-    <div className="min-h-screen text-gray-800 dark:text-gray-200 font-sans flex flex-col">
+    <div className="min-h-screen text-gray-800 dark:text-gray-200 font-sans flex flex-col overflow-x-hidden">
       <header className="sticky top-0 z-30 bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg shadow-sm">
         {playbackErrorMsg && (
           <div className="w-full bg-red-500 text-white text-center py-2 font-semibold animate-pulse">
@@ -758,6 +774,16 @@ export default function App() {
             </div>
         </div>
       </footer>
+
+      {showScrollTop && (
+        <button
+          onClick={scrollToTop}
+          className="fixed bottom-20 right-4 md:right-6 p-3 rounded-full bg-brand-500 text-white shadow-lg hover:bg-brand-600 transition-colors z-30"
+          title="Volver arriba"
+        >
+          <ChevronUpIcon className="w-6 h-6" />
+        </button>
+      )}
     </div>
   );
 }

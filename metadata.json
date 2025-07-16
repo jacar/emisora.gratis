@@ -1,0 +1,8 @@
+{
+  "name": "Top.emisoras",
+  "description": "An application that allows users to listen to radio stations from around the world for free, featuring powerful search, filtering, and a favorites list.",
+  "requestFramePermissions": [
+    "microphone"
+  ],
+  "prompt": ""
+}

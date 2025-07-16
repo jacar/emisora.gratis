@@ -35,16 +35,16 @@ const ServiceBanner = ({ t, onClose }: { t: (key: string) => string; onClose: ()
 
   return (
     <div className="bg-brand-500 text-white rounded-lg p-3 md:p-6 my-4 md:my-6 flex flex-col md:flex-row items-center justify-between shadow-lg relative">
-      {/* Botón de cierre */}
+      {/* Botón de cierre - movido arriba a la izquierda */}
       <button
         onClick={onClose}
-        className="absolute top-2 right-2 md:top-3 md:right-3 p-1 rounded-full hover:bg-white/20 transition-colors"
+        className="absolute top-2 left-2 md:top-3 md:left-3 p-1 rounded-full hover:bg-white/20 transition-colors z-10"
         title="Cerrar"
       >
         <XIcon className="w-5 h-5 md:w-6 md:h-6" />
       </button>
       
-      <div className="text-center md:text-left pr-8 md:pr-0">
+      <div className="text-center md:text-left pl-8 md:pl-12">
         <h3 className="text-lg md:text-2xl font-bold">{t('serviceBannerTitle')}</h3>
         <p className="mt-1 opacity-90 text-sm md:text-base">{t('serviceBannerText')}</p>
       </div>
@@ -120,7 +120,7 @@ export default function App() {
   const [modalContent, setModalContent] = useState(null);
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
   const [showServiceBanner, setShowServiceBanner] = useState(() => {
-    // Verificar si el banner fue cerrado anteriormente
+    // Mostrar el banner por defecto, solo ocultarlo si fue cerrado explícitamente
     return localStorage.getItem('serviceBannerClosed') !== 'true';
   });
   
@@ -158,6 +158,11 @@ export default function App() {
   const closeServiceBanner = () => {
     setShowServiceBanner(false);
     localStorage.setItem('serviceBannerClosed', 'true');
+  };
+
+  const resetServiceBanner = () => {
+    setShowServiceBanner(true);
+    localStorage.removeItem('serviceBannerClosed');
   };
 
   const fetchStationsCallback = useCallback(async (apiCall: () => Promise<Station[]>, isNewSearch: boolean) => {
@@ -410,7 +415,9 @@ export default function App() {
   }, [view, fetchStationsCallback]);
   
   const handleVoiceSearch = () => {
-    // @ts-ignore
+    // Verificar si el navegador soporta reconocimiento de voz
+    const SpeechRecognition = window.SpeechRecognition || (window as any).webkitSpeechRecognition;
+    
     if (!SpeechRecognition) {
       setVoiceError(t('voiceSearchError'));
       return;
@@ -419,40 +426,70 @@ export default function App() {
     if (isListening) {
       recognitionRef.current?.stop();
       setIsListening(false);
+      setVoiceError(null);
       return;
     }
 
-    // @ts-ignore
-    const recognition = new SpeechRecognition();
-    recognitionRef.current = recognition;
+    try {
+      const recognition = new SpeechRecognition();
+      recognitionRef.current = recognition;
 
-    recognition.lang = language;
-    recognition.interimResults = true;
-    recognition.continuous = false;
+      // Configurar el reconocimiento
+      recognition.lang = language === 'es' ? 'es-ES' : 'en-US';
+      recognition.interimResults = true;
+      recognition.continuous = false;
+      recognition.maxAlternatives = 1;
 
-    recognition.onstart = () => setIsListening(true);
-    recognition.onresult = (event: any) => {
-      let finalTranscript = '';
-      for (let i = 0; i < event.results.length; ++i) {
-        if (event.results[i].isFinal) {
-          finalTranscript += event.results[i][0].transcript;
+      recognition.onstart = () => {
+        setIsListening(true);
+        setVoiceError(null);
+        console.log('Voice recognition started');
+      };
+
+      recognition.onresult = (event: SpeechRecognitionEvent) => {
+        let finalTranscript = '';
+        let interimTranscript = '';
+
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          const transcript = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            finalTranscript += transcript;
+          } else {
+            interimTranscript += transcript;
+          }
         }
-      }
-      if (finalTranscript) {
-        setSearchTerm(finalTranscript);
-        recognition.stop();
-      } else {
-        setSearchTerm(Array.from(event.results).map((result: any) => result[0].transcript).join(''));
-      }
-    };
-    recognition.onerror = () => setVoiceError(t('voiceSearchError'));
-    recognition.onend = () => setIsListening(false);
-    recognition.start();
+
+        if (finalTranscript) {
+          console.log('Final transcript:', finalTranscript);
+          setSearchTerm(finalTranscript);
+          recognition.stop();
+        } else if (interimTranscript) {
+          console.log('Interim transcript:', interimTranscript);
+          setSearchTerm(interimTranscript);
+        }
+      };
+
+      recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+        console.error('Voice recognition error:', event.error);
+        setVoiceError(t('voiceSearchError'));
+        setIsListening(false);
+      };
+
+      recognition.onend = () => {
+        console.log('Voice recognition ended');
+        setIsListening(false);
+      };
+
+      recognition.start();
+    } catch (error) {
+      console.error('Error starting voice recognition:', error);
+      setVoiceError(t('voiceSearchError'));
+    }
   };
 
   const headerTitle = useMemo(() => {
     switch(view) {
-        case 'default': return 'VIVE LA RADIO';
+        case 'default': return t('featuredStations');
         case 'random': return t('randomStations');
         case 'colombian': return 'Emisoras Colombianas';
         case 'search': return debouncedSearchTerm ? `${t('searchResults')}: "${debouncedSearchTerm}"` : t('searchResults');

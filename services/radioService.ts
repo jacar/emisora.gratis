@@ -1,37 +1,46 @@
 
 const API_BASE_URL = 'https://all.api.radio-browser.info/json';
 
+// Cache simple para evitar llamadas repetidas
+const cache = new Map();
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutos
+
 const fetchStations = async (endpoint: string, params: Record<string, string> = {}) => {
   const url = new URL(`${API_BASE_URL}/${endpoint}`);
   Object.entries(params).forEach(([key, value]) => {
     if (value) url.searchParams.append(key, value);
   });
   
-  // Add a cache-busting parameter to ensure a unique request every time.
-  url.searchParams.append('_', new Date().getTime().toString());
+  // Crear clave de cache
+  const cacheKey = url.toString();
+  const cached = cache.get(cacheKey);
+  
+  if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+    console.log("Using cached data for:", cacheKey);
+    return cached.data;
+  }
 
   try {
     console.log("Fetching stations from URL:", url.toString());
-    console.log("With parameters:", params);
     const response = await fetch(url.toString(), {
       method: 'GET',
-      cache: 'no-cache', // Still good practice to keep this.
+      cache: 'no-cache',
     });
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
     const data = await response.json();
-    // Filter out stations without a resolved URL, as they cannot be played.
-    return data.filter((station: any) => station.url_resolved);
+    const filteredData = data.filter((station: any) => station.url_resolved);
+    
+    // Guardar en cache
+    cache.set(cacheKey, {
+      data: filteredData,
+      timestamp: Date.now()
+    });
+    
+    return filteredData;
   } catch (error) {
     console.error("Failed to fetch stations:", error);
-    if (error instanceof Error) {
-      console.error("Error name:", error.name);
-      console.error("Error message:", error.message);
-      console.error("Error stack:", error.stack);
-    } else {
-      console.error("Unknown error type:", error);
-    }
     return [];
   }
 };
@@ -83,161 +92,57 @@ export const fetchRandomStations = (limit = 50) => {
     });
 }
 
-// Función para obtener emisoras colombianas específicas
+// Función para obtener emisoras colombianas específicas (simplificada para mejor rendimiento)
 export const getColombianStations = async (limit = 500) => {
-  const colombianStations: any[] = [];
-
-  // Buscar específicamente "Blue Radio Bogota"
   try {
-    const blueRadioBogota = await searchStations('Blue Radio Bogota', 10);
-    colombianStations.push(...blueRadioBogota);
+    // Solo hacer 2 llamadas principales para mejor rendimiento
+    const [colombianByCountry, colombianByTag] = await Promise.all([
+      fetchStations('stations/search', {
+        country: 'Colombia',
+        limit: '300', // Aumentar para obtener más en una sola llamada
+        hidebroken: 'true',
+        order: 'votes',
+        reverse: 'true'
+      }),
+      fetchStations('stations/bytag/colombia', {
+        limit: '200',
+        hidebroken: 'true',
+        order: 'votes',
+        reverse: 'true'
+      })
+    ]);
+
+    // Combinar y eliminar duplicados
+    const allStations = [...colombianByCountry, ...colombianByTag];
+    const uniqueStations = allStations.filter((station, index, self) => 
+      index === self.findIndex(s => s.stationuuid === station.stationuuid)
+    );
+    
+    return uniqueStations
+      .sort((a, b) => (b.votes || 0) - (a.votes || 0))
+      .slice(0, limit);
   } catch (error) {
-    console.warn('Error buscando Blue Radio Bogota:', error);
-  }
-  
-  // Definir todas las promesas de búsqueda
-  const searchPromises = [];
-
-  // Buscar todas las emisoras de Colombia por país
-  searchPromises.push(fetchStations('stations/search', {
-    country: 'Colombia',
-    limit: limit.toString(),
-    hidebroken: 'true',
-    order: 'votes',
-    reverse: 'true'
-  }).catch(error => {
-    console.warn('Error buscando emisoras de Colombia por país:', error);
+    console.warn('Error loading Colombian stations:', error);
     return [];
-  }));
-
-  // También buscar por tag "colombia" y "colombian"
-  searchPromises.push(fetchStations('stations/bytag/colombia', {
-    limit: '100',
-    hidebroken: 'true',
-    order: 'votes',
-    reverse: 'true'
-  }).catch(error => {
-    console.warn('Error buscando por tag colombia:', error);
-    return [];
-  }));
-
-  searchPromises.push(fetchStations('stations/bytag/colombian', {
-    limit: '100',
-    hidebroken: 'true',
-    order: 'votes',
-    reverse: 'true'
-  }).catch(error => {
-    console.warn('Error buscando por tag colombian:', error);
-    return [];
-  }));
-
-  // Buscar por tags adicionales relacionados con Colombia
-  const additionalTags = ['bogota', 'medellin', 'cali', 'barranquilla', 'cartagena', 'pereira', 'manizales', 'bucaramanga', 'vallenato', 'salsa', 'merengue', 'reggaeton', 'bachata'];
-  
-  // Buscar específicamente Blue Radio y otras emisoras importantes
-  const specificStations = ['Blue Radio', 'Olimpica Stereo', 'Caracol Radio', 'RCN Radio', 'W Radio', 'La FM'];
-  
-  for (const stationName of specificStations) {
-    searchPromises.push(fetchStations('stations/search', {
-      name: stationName,
-      country: 'Colombia',
-      limit: '10',
-      hidebroken: 'true',
-      order: 'votes',
-      reverse: 'true'
-    }).catch(error => {
-      console.warn(`Error buscando ${stationName}:`, error);
-      return [];
-    }));
   }
-  
-  for (const tag of additionalTags) {
-    searchPromises.push(fetchStations('stations/bytag/' + tag, {
-      limit: '50',
-      hidebroken: 'true',
-      order: 'votes',
-      reverse: 'true'
-    }).catch(error => {
-      console.warn(`Error buscando por tag ${tag}:`, error);
-      return [];
-    }));
-  }
-
-  // Ejecutar todas las promesas en paralelo
-  const results = await Promise.all(searchPromises);
-  results.forEach(res => colombianStations.push(...res));
-
-  // Eliminar duplicados basándose en stationuuid y ordenar por votos
-  const uniqueStations = colombianStations.filter((station, index, self) => 
-    index === self.findIndex(s => s.stationuuid === station.stationuuid)
-  );
-  return uniqueStations.sort((a, b) => (b.votes || 0) - (a.votes || 0))
-  .slice(0, limit);
 };
 
-// Función para cargar más emisoras colombianas con paginación
+// Función para cargar más emisoras colombianas con paginación (simplificada)
 export const getMoreColombianStations = async (limit = 50, offset = 0) => {
-  const colombianStations: any[] = [];
-  const searchPromises = [];
-
-  // Buscar emisoras de Colombia por país con paginación
-  searchPromises.push(fetchStations('stations/search', {
-    country: 'Colombia',
-    limit: limit.toString(),
-    offset: offset.toString(),
-    hidebroken: 'true',
-    order: 'votes',
-    reverse: 'true'
-  }).catch(error => {
-    console.warn('Error buscando más emisoras de Colombia:', error);
-    return [];
-  }));
-
-  // Buscar por tags adicionales con paginación
-  const additionalTags = ['bogota', 'medellin', 'cali', 'barranquilla', 'cartagena', 'pereira', 'manizales', 'bucaramanga', 'vallenato', 'salsa', 'merengue', 'reggaeton', 'bachata'];
-  
-  // Buscar específicamente Blue Radio y otras emisoras importantes con paginación
-  const specificStations = ['Blue Radio', 'Olimpica Stereo', 'Caracol Radio', 'RCN Radio', 'W Radio', 'La FM'];
-
-  for (const stationName of specificStations) {
-    searchPromises.push(fetchStations('stations/search', {
-      name: stationName,
+  try {
+    // Solo una llamada para cargar más emisoras
+    const stations = await fetchStations('stations/search', {
       country: 'Colombia',
-      limit: '10',
+      limit: limit.toString(),
+      offset: offset.toString(),
       hidebroken: 'true',
       order: 'votes',
       reverse: 'true'
-    }).catch(error => {
-      console.warn(`Error buscando ${stationName}:`, error);
-      return [];
-    }));
+    });
+    
+    return stations;
+  } catch (error) {
+    console.warn('Error loading more Colombian stations:', error);
+    return [];
   }
-
-  for (const tag of additionalTags) {
-    searchPromises.push(fetchStations('stations/bytag/' + tag, {
-      limit: '50',
-      hidebroken: 'true',
-      order: 'votes',
-      reverse: 'true'
-    }).catch(error => {
-      console.warn(`Error buscando por tag ${tag}:`, error);
-      return [];
-    }));
-  }
-
-  // Ejecutar todas las promesas en paralelo
-  const results = await Promise.all(searchPromises);
-  results.forEach(res => colombianStations.push(...res));
-
-  // Eliminar duplicados basándose en stationuuid
-  const uniqueStations = colombianStations.filter((station, index, self) => 
-    index === self.findIndex(s => s.stationuuid === station.stationuuid)
-  );
-
-  // Ordenar por votos y limitar el resultado
-  return uniqueStations
-    .sort((a, b) => (b.votes || 0) - (a.votes || 0))
-    .slice(0, limit);
-  
-
 };

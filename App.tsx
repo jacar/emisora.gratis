@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { FixedSizeList } from 'react-window';
 import { translations, languages } from './i18n.js';
-import { searchStations, getStationsByUuids, fetchRandomStations, getStationsByTag, getColombianStations, getMoreColombianStations } from './services/radioService.js';
+import { searchStations, getStationsByUuids, fetchRandomStations, getStationsByTag, getColombianStations, getMoreColombianStations, filterStationsByStream } from './services/radioService.js';
 import { useFavorites } from './hooks/useFavorites.js';
 import Player from './components/Player.jsx';
 import StationCard from './components/StationCard.jsx';
@@ -193,10 +193,12 @@ export default function App() {
     
     try {
       const newStations = await apiCall();
+      // Filtrar emisoras bloqueadas
       const filteredStations = filterBlocked(newStations);
-      
-      setHasMore(filteredStations.length >= PAGE_SIZE);
-      setStations(prev => isNewSearch ? filteredStations : [...prev, ...filteredStations]);
+      // Filtrar emisoras cuyo stream responde rápido
+      const fastStations = await filterStationsByStream(filteredStations, 2000);
+      setHasMore(fastStations.length >= PAGE_SIZE);
+      setStations(prev => isNewSearch ? fastStations : [...prev, ...fastStations]);
       offset.current += newStations.length;
 
     } catch (err) {
@@ -292,27 +294,27 @@ export default function App() {
       try {
         // Cargar solo emisoras latinas inicialmente (más rápido)
         const latinoStations = await getStationsByTag('latino', PAGE_SIZE, 0);
-        
+        // Filtrar emisoras bloqueadas
+        const filteredLatino = filterBlocked(latinoStations);
+        // Filtrar emisoras cuyo stream responde rápido
+        const fastLatino = await filterStationsByStream(filteredLatino, 2000);
+        setStations(fastLatino);
+        setHasMore(fastLatino.length >= PAGE_SIZE);
+        offset.current = fastLatino.length;
         // Cargar emisoras colombianas en segundo plano (sin bloquear la UI)
         const colombianStationsPromise = getColombianStations(PAGE_SIZE);
-        
-        // Mostrar las latinas inmediatamente
-        const filteredStations = filterBlocked(latinoStations);
-        setStations(filteredStations);
-        setHasMore(filteredStations.length >= PAGE_SIZE);
-        offset.current = filteredStations.length;
-        
-        // Cuando lleguen las colombianas, agregarlas
-        colombianStationsPromise.then(colombianStations => {
+        colombianStationsPromise.then(async colombianStations => {
           const allStations = [...latinoStations, ...colombianStations];
           const uniqueStations = allStations.filter((station, index, self) => 
             index === self.findIndex(s => s.stationuuid === station.stationuuid)
           );
           const sortedStations = uniqueStations.sort((a, b) => (b.votes || 0) - (a.votes || 0));
           const finalFilteredStations = filterBlocked(sortedStations);
-          setStations(finalFilteredStations);
-          setHasMore(finalFilteredStations.length >= PAGE_SIZE);
-          offset.current = finalFilteredStations.length;
+          // Filtrar emisoras cuyo stream responde rápido
+          const fastFinal = await filterStationsByStream(finalFilteredStations, 2000);
+          setStations(fastFinal);
+          setHasMore(fastFinal.length >= PAGE_SIZE);
+          offset.current = fastFinal.length;
         }).catch(err => {
           console.warn("Error loading Colombian stations:", err);
           // No mostrar error si las latinas ya se cargaron

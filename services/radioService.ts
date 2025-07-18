@@ -146,3 +146,39 @@ export const getMoreColombianStations = async (limit = 50, offset = 0) => {
     return [];
   }
 };
+
+// Verifica si un stream responde correctamente en menos de 2 segundos
+export async function isStreamAvailable(url: string, timeout = 2000): Promise<boolean> {
+  return new Promise((resolve) => {
+    const controller = new AbortController();
+    const timer = setTimeout(() => {
+      controller.abort();
+      resolve(false);
+    }, timeout);
+    fetch(url, {
+      method: 'HEAD',
+      mode: 'no-cors', // Algunos streams no permiten CORS, pero intentamos igual
+      signal: controller.signal,
+    })
+      .then(() => {
+        clearTimeout(timer);
+        resolve(true);
+      })
+      .catch(() => {
+        clearTimeout(timer);
+        resolve(false);
+      });
+  });
+}
+
+// Filtra una lista de emisoras dejando solo las que responden rápido
+export async function filterStationsByStream(stations: any[], timeout = 2000): Promise<any[]> {
+  const checks = await Promise.all(
+    stations.map(async (station) => {
+      if (!station.url_resolved) return false;
+      const ok = await isStreamAvailable(station.url_resolved, timeout);
+      return ok;
+    })
+  );
+  return stations.filter((_, i) => checks[i]);
+}

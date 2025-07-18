@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { getStationsByTag } from '../services/radioService.js';
+import { getStationsByTag, filterStationsByStream } from '../services/radioService.js';
 import { PlayIcon } from './Icons.jsx';
 import Spinner from './Spinner.jsx';
 
@@ -22,7 +22,9 @@ const HeroSlider = ({ onPlayStation, t }) => {
             try {
                 const stations = await getStationsByTag('latino', 20);
                 const stationsWithImages = stations.filter(s => s.favicon && !s.favicon.includes('dicebear'));
-                setSlides(stationsWithImages.slice(0, 10)); // Limit to max 10 slides
+                // Filtrar emisoras funcionales
+                const functionalStations = await filterStationsByStream(stationsWithImages, 2000);
+                setSlides(functionalStations.slice(0, 10)); // Limit to max 10 slides
             } catch (error) {
                 console.error("Failed to fetch slides for hero", error);
             } finally {

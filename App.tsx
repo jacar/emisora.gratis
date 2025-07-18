@@ -414,7 +414,11 @@ export default function App() {
     if (type === 'favorites') {
       setIsLoadingFavorites(true);
       getStationsByUuids(favoriteUuids)
-        .then(setFavoriteStations)
+        .then(async (stations) => {
+          // Filtrar favoritos funcionales
+          const functionalFavorites = await filterStationsByStream(stations, 2000);
+          setFavoriteStations(functionalFavorites);
+        })
         .catch((err) => {
             console.error("Failed to fetch favorites:", err);
             setError(t('error'));

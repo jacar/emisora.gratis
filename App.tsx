@@ -216,7 +216,7 @@ export default function App() {
       offset.current += fastStations.length;
     } catch (err) {
       console.error("Failed to fetch stations:", err);
-      setError(t('error'));
+      // No mostrar error al usuario
     } finally {
       setIsLoading(false);
     }
@@ -326,7 +326,7 @@ export default function App() {
         });
       } catch (err) {
         console.error("Failed to fetch initial stations:", err);
-        setError(t('error'));
+        // No mostrar error al usuario
       } finally {
         setIsLoading(false);
       }
@@ -425,7 +425,7 @@ export default function App() {
         })
         .catch((err) => {
             console.error("Failed to fetch favorites:", err);
-            setError(t('error'));
+            // No mostrar error al usuario
         })
         .finally(() => setIsLoadingFavorites(false));
     }

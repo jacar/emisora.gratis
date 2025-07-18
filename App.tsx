@@ -657,8 +657,6 @@ export default function App() {
         
         {(isLoading || isColombianLoading) && stations.length === 0 ? (
           <div className="flex justify-center items-center h-64"><Spinner className="w-12 h-12 text-brand-500" /></div>
-        ) : error ? (
-          <div className="text-center text-red-500 bg-red-100 dark:bg-red-900/30 p-4 rounded-lg">{error}</div>
         ) : stations.length > 0 ? (
           <>
             <FixedSizeList

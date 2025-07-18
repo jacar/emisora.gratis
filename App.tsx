@@ -182,7 +182,25 @@ export default function App() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const fetchStationsCallback = useCallback(async (apiCall: () => Promise<Station[]>, isNewSearch: boolean) => {
+  // Helper para obtener suficientes emisoras funcionales
+  async function fetchEnoughFunctionalStations(apiCall: (offset?: number) => Promise<Station[]>, pageSize = PAGE_SIZE, maxTries = 10) {
+    let result = [];
+    let offset = 0;
+    let tries = 0;
+    while (result.length < pageSize && tries < maxTries) {
+      const stations = await apiCall(offset);
+      if (!stations || stations.length === 0) break;
+      const filtered = filterBlocked(stations);
+      const functional = await filterStationsByStream(filtered, 2000);
+      result = result.concat(functional);
+      offset += stations.length;
+      tries++;
+      if (stations.length < pageSize) break; // No hay más en la API
+    }
+    return result.slice(0, pageSize);
+  }
+
+  const fetchStationsCallback = useCallback(async (apiCall: (offset?: number) => Promise<Station[]>, isNewSearch: boolean) => {
     if(isNewSearch) {
         offset.current = 0;
         setStations([]);
@@ -190,20 +208,14 @@ export default function App() {
     }
     setIsLoading(true);
     setError(null);
-    
     try {
-      const newStations = await apiCall();
-      // Filtrar emisoras bloqueadas
-      const filteredStations = filterBlocked(newStations);
-      // Filtrar emisoras cuyo stream responde rápido
-      const fastStations = await filterStationsByStream(filteredStations, 2000);
+      // Usar el helper para obtener suficientes emisoras funcionales
+      const fastStations = await fetchEnoughFunctionalStations(apiCall, PAGE_SIZE);
       setHasMore(fastStations.length >= PAGE_SIZE);
       setStations(prev => isNewSearch ? fastStations : [...prev, ...fastStations]);
-      offset.current += newStations.length;
-
+      offset.current += fastStations.length;
     } catch (err) {
       console.error("Failed to fetch stations:", err);
-      console.error("Error setting localized error message:", err);
       setError(t('error'));
     } finally {
       setIsLoading(false);
@@ -217,18 +229,18 @@ export default function App() {
     
     observer.current = new IntersectionObserver(entries => {
       if (entries[0].isIntersecting) {
-          let apiCall: (() => Promise<Station[]>) | null = null;
+          let apiCall: ((offset?: number) => Promise<Station[]>) | null = null;
           if (view === 'default') {
             // Cargar más emisoras latinas y colombianas
-            apiCall = async () => {
-              const latinoStations = await getStationsByTag('latino', PAGE_SIZE, offset.current);
-              const colombianStations = await getMoreColombianStations(PAGE_SIZE, offset.current);
+            apiCall = async (offset) => {
+              const latinoStations = await getStationsByTag('latino', PAGE_SIZE, offset);
+              const colombianStations = await getMoreColombianStations(PAGE_SIZE, offset);
               return [...latinoStations, ...colombianStations];
             };
           } else if (view === 'colombian') {
-            apiCall = () => getMoreColombianStations(PAGE_SIZE, offset.current);
+            apiCall = (offset) => getMoreColombianStations(PAGE_SIZE, offset);
           } else if (view === 'search' && debouncedSearchTerm) {
-            apiCall = () => searchStations(debouncedSearchTerm, PAGE_SIZE, offset.current);
+            apiCall = (offset) => searchStations(debouncedSearchTerm, PAGE_SIZE, offset);
           }
           
           if (apiCall) {
@@ -247,12 +259,12 @@ export default function App() {
     if (view === 'search' && !debouncedSearchTerm) {
       // If search is cleared, go home
       setView('default');
-      fetchStationsCallback(() => getStationsByTag('latino', PAGE_SIZE, 0), true);
+      fetchStationsCallback((offset) => getStationsByTag('latino', PAGE_SIZE, 0));
     } else if (debouncedSearchTerm) {
       if (view !== 'search') {
         setView('search');
       }
-      fetchStationsCallback(() => searchStations(debouncedSearchTerm, PAGE_SIZE, 0), true);
+      fetchStationsCallback((offset) => searchStations(debouncedSearchTerm, PAGE_SIZE, offset));
     }
 
   }, [debouncedSearchTerm, fetchStationsCallback, view, isRandomLoading]);
@@ -292,34 +304,26 @@ export default function App() {
       setIsLoading(true);
       setError(null);
       try {
-        // Cargar solo emisoras latinas inicialmente (más rápido)
-        const latinoStations = await getStationsByTag('latino', PAGE_SIZE, 0);
-        // Filtrar emisoras bloqueadas
-        const filteredLatino = filterBlocked(latinoStations);
-        // Filtrar emisoras cuyo stream responde rápido
-        const fastLatino = await filterStationsByStream(filteredLatino, 2000);
+        // Usar el helper para obtener suficientes emisoras funcionales
+        const fastLatino = await fetchEnoughFunctionalStations((offset) => getStationsByTag('latino', PAGE_SIZE, offset), PAGE_SIZE);
         setStations(fastLatino);
         setHasMore(fastLatino.length >= PAGE_SIZE);
         offset.current = fastLatino.length;
         // Cargar emisoras colombianas en segundo plano (sin bloquear la UI)
         const colombianStationsPromise = getColombianStations(PAGE_SIZE);
         colombianStationsPromise.then(async colombianStations => {
-          const allStations = [...latinoStations, ...colombianStations];
+          const allStations = [...fastLatino, ...colombianStations];
           const uniqueStations = allStations.filter((station, index, self) => 
             index === self.findIndex(s => s.stationuuid === station.stationuuid)
           );
           const sortedStations = uniqueStations.sort((a, b) => (b.votes || 0) - (a.votes || 0));
-          const finalFilteredStations = filterBlocked(sortedStations);
-          // Filtrar emisoras cuyo stream responde rápido
-          const fastFinal = await filterStationsByStream(finalFilteredStations, 2000);
+          const fastFinal = await fetchEnoughFunctionalStations(async (offset) => sortedStations.slice(offset, offset + PAGE_SIZE), PAGE_SIZE);
           setStations(fastFinal);
           setHasMore(fastFinal.length >= PAGE_SIZE);
           offset.current = fastFinal.length;
         }).catch(err => {
           console.warn("Error loading Colombian stations:", err);
-          // No mostrar error si las latinas ya se cargaron
         });
-        
       } catch (err) {
         console.error("Failed to fetch initial stations:", err);
         setError(t('error'));
@@ -432,7 +436,7 @@ export default function App() {
     setSearchTerm('');
     if (view !== 'default') {
       setView('default');
-      fetchStationsCallback(() => getStationsByTag('latino', PAGE_SIZE, 0), true);
+      fetchStationsCallback((offset) => getStationsByTag('latino', PAGE_SIZE, 0));
     }
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [view, fetchStationsCallback]);

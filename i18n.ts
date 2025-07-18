@@ -1,7 +1,7 @@
 
 export const translations = {
   en: {
-    title: "Top.emisoras",
+    title: "Radio.gratis",
     searchPlaceholder: "Search by name, tag, or country...",
     favorites: "Favorites",
     random: "Random",
@@ -77,7 +77,7 @@ We may update this Privacy Policy from time to time. We encourage you to review 
     endOfList: "You've reached the end of the list.",
   },
   es: {
-    title: "Top.emisoras",
+    title: "Radio.gratis",
     searchPlaceholder: "Buscar por nombre, etiqueta o país...",
     favorites: "Favoritos",
     random: "Aleatorio",

@@ -12,8 +12,8 @@ export default defineConfig(({ mode }) => {
           registerType: 'autoUpdate',
           includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
           manifest: {
-            name: 'Top.emisoras - Radio Online Gratis',
-            short_name: 'Top.emisoras',
+            name: 'Radio.gratis - Radio Online Gratis',
+            short_name: 'Radio.gratis',
             description: 'Escucha radio online gratis. Miles de emisoras colombianas, latinas y del mundo.',
             theme_color: '#3b82f6',
             background_color: '#ffffff',

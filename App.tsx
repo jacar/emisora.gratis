@@ -595,8 +595,8 @@ export default function App() {
         <div className="container mx-auto px-4 py-3 relative">
           <div className="flex justify-between items-center gap-2 md:gap-4">
             <a href="#" onClick={(e) => { e.preventDefault(); handleHomeClick(); }} className="flex-shrink-0">
-                <img src="https://www.webcincodev.com/blog/wp-content/uploads/2025/07/LOGO_TOP.png" alt="Top.emisoras Logo" className="h-12 block dark:hidden" />
-                <img src="https://www.webcincodev.com/blog/wp-content/uploads/2025/07/logodark.png" alt="Top.emisoras Logo Dark" className="h-12 hidden dark:block" />
+                <img src="https://www.webcincodev.com/blog/wp-content/uploads/2025/07/Gratis.png" alt="Radio.gratis Logo" className="h-12 block dark:hidden" />
+                <img src="https://www.webcincodev.com/blog/wp-content/uploads/2025/07/Gratis-1.png" alt="Radio.gratis Logo Dark" className="h-12 hidden dark:block" />
             </a>
             
             {/* Buscador solo visible en md+ */}

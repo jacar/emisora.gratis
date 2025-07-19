@@ -20,11 +20,11 @@ const HeroSlider = ({ onPlayStation, t }) => {
         const fetchTopLatinStations = async () => {
             setIsLoading(true);
             try {
-                const stations = await getStationsByTag('latino', 20);
+                const stations = await getStationsByTag('latino', 15);
                 const stationsWithImages = stations.filter(s => s.favicon && !s.favicon.includes('dicebear'));
-                // Filtrar emisoras funcionales
-                const functionalStations = await filterStationsByStream(stationsWithImages, 2000);
-                setSlides(functionalStations.slice(0, 10)); // Limit to max 10 slides
+                // Filtrar emisoras funcionales con timeout más corto
+                const functionalStations = await filterStationsByStream(stationsWithImages, 1000);
+                setSlides(functionalStations.slice(0, 8)); // Limit to max 8 slides
             } catch (error) {
                 console.error("Failed to fetch slides for hero", error);
             } finally {
@@ -75,7 +75,7 @@ const HeroSlider = ({ onPlayStation, t }) => {
                 <div className="flex items-center gap-4">
                     <img src={currentSlide.favicon} alt={currentSlide.name} className="w-20 h-20 md:w-24 md:h-24 rounded-lg object-cover shadow-lg border-2 border-white/20"/>
                     <div className="flex-grow min-w-0">
-                         <h2 className="text-2xl md:text-4xl font-black tracking-tight text-shadow">{currentSlide.name}</h2>
+                         <h2 className="text-xl md:text-2xl font-black tracking-tight text-shadow">{currentSlide.name}</h2>
                          <p className="text-sm md:text-base opacity-80 truncate">{currentSlide.country}, {currentSlide.language.split(',')[0]}</p>
                     </div>
                     <button

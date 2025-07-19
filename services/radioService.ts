@@ -178,10 +178,13 @@ export async function isStreamAvailable(url: string, timeout = 2000): Promise<bo
   });
 }
 
-// Filtra una lista de emisoras dejando solo las que responden rápido
-export async function filterStationsByStream(stations: any[], timeout = 2000): Promise<any[]> {
+// Filtra una lista de emisoras dejando solo las que responden rápido (optimizado)
+export async function filterStationsByStream(stations: any[], timeout = 1000): Promise<any[]> {
+  // Limitar a máximo 10 emisoras para verificar simultáneamente
+  const stationsToCheck = stations.slice(0, 10);
+  
   const checks = await Promise.all(
-    stations.map(async (station) => {
+    stationsToCheck.map(async (station) => {
       if (!station.url_resolved) return false;
       try {
         const ok = await isStreamAvailable(station.url_resolved, timeout);
@@ -192,5 +195,5 @@ export async function filterStationsByStream(stations: any[], timeout = 2000): P
       }
     })
   );
-  return stations.filter((_, i) => checks[i]);
+  return stationsToCheck.filter((_, i) => checks[i]);
 }

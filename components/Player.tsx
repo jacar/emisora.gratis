@@ -94,6 +94,8 @@ const Player = ({ station, isPlaying, onTogglePlay, onClose, onPlaybackError, t 
              {isMuted || volume === 0 ? <VolumeXIcon className="w-6 h-6 text-gray-600 dark:text-gray-400" /> : <Volume2Icon className="w-6 h-6 text-gray-600 dark:text-gray-400" />}
           </button>
           <input
+            id="volume-control"
+            name="volume"
             type="range"
             min="0"
             max="1"

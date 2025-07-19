@@ -75,6 +75,9 @@ We may update this Privacy Policy from time to time. We encourage you to review 
     voiceSearchError: "Voice search not supported or permission denied.",
     whatsappMessage: "Hello! I saw the banner on the Top.emisoras app and I'd like to request information about your web design and development services.",
     endOfList: "You've reached the end of the list.",
+    installApp: "Install Radio.gratis",
+    installAppDesc: "Install the app for faster access",
+    install: "Install",
   },
   es: {
     title: "Radio.gratis",
@@ -151,6 +154,9 @@ Podemos actualizar esta Política de Privacidad de vez en cuando. Te recomendamo
     voiceSearchError: "La búsqueda por voz no es compatible o se denegó el permiso.",
     whatsappMessage: "¡Hola! Vi el banner en la app Top.emisoras y me gustaría solicitar información sobre tus servicios de diseño y desarrollo web.",
     endOfList: "Has llegado al final de la lista.",
+    installApp: "Instalar Radio.gratis",
+    installAppDesc: "Instala la app para acceder más rápido",
+    install: "Instalar",
   },
 };
 

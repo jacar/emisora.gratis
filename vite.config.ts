@@ -10,7 +10,7 @@ export default defineConfig(({ mode }) => {
         react(),
         VitePWA({
           registerType: 'autoUpdate',
-          includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
+          includeAssets: ['favicon.ico'],
           manifest: {
             name: 'Radio.gratis - Radio Online Gratis',
             short_name: 'Radio.gratis',
@@ -23,13 +23,13 @@ export default defineConfig(({ mode }) => {
             start_url: '/',
             icons: [
               {
-                src: 'android-chrome-192x192.png',
+                src: 'https://www.webcincodev.com/blog/wp-content/uploads/2025/07/icono-Radio-1.png',
                 sizes: '192x192',
                 type: 'image/png',
                 purpose: 'maskable any'
               },
               {
-                src: 'android-chrome-512x512.png',
+                src: 'https://www.webcincodev.com/blog/wp-content/uploads/2025/07/icono-Radio-1.png',
                 sizes: '512x512',
                 type: 'image/png',
                 purpose: 'maskable any'

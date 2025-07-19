@@ -155,18 +155,25 @@ export async function isStreamAvailable(url: string, timeout = 2000): Promise<bo
       controller.abort();
       resolve(false);
     }, timeout);
+    
+    // Intentar con GET en lugar de HEAD para evitar errores 405
     fetch(url, {
-      method: 'HEAD',
-      mode: 'no-cors', // Algunos streams no permiten CORS, pero intentamos igual
+      method: 'GET',
+      mode: 'no-cors',
       signal: controller.signal,
     })
       .then(() => {
         clearTimeout(timer);
         resolve(true);
       })
-      .catch(() => {
+      .catch((error) => {
         clearTimeout(timer);
-        resolve(false);
+        // Silenciar errores específicos de red
+        if (error.name === 'AbortError' || error.name === 'TypeError') {
+          resolve(false);
+        } else {
+          resolve(false);
+        }
       });
   });
 }
@@ -176,8 +183,13 @@ export async function filterStationsByStream(stations: any[], timeout = 2000): P
   const checks = await Promise.all(
     stations.map(async (station) => {
       if (!station.url_resolved) return false;
-      const ok = await isStreamAvailable(station.url_resolved, timeout);
-      return ok;
+      try {
+        const ok = await isStreamAvailable(station.url_resolved, timeout);
+        return ok;
+      } catch (error) {
+        // Silenciar errores de streams individuales
+        return false;
+      }
     })
   );
   return stations.filter((_, i) => checks[i]);

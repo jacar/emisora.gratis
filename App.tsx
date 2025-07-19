@@ -11,6 +11,7 @@ import Spinner from './components/Spinner.jsx';
 import HeroSlider from './components/HeroSlider.jsx';
 import FloatingNav from './components/FloatingNav.jsx';
 import SEOHead from './components/SEOHead.jsx';
+import PWAInstallPrompt from './components/PWAInstallPrompt.jsx';
 import { HeartIcon, SunIcon, MoonIcon, SearchIcon, MenuIcon, GithubIcon, BriefcaseIcon, WhatsAppIcon, MicrophoneIcon, XIcon, ChevronUpIcon } from './components/Icons.jsx';
 import type { Station } from './types';
 
@@ -603,6 +604,8 @@ export default function App() {
             <div className="relative flex-1 min-w-0 max-w-xl hidden md:block">
               <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
               <input
+                id="desktop-search"
+                name="search"
                 type="search"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -727,6 +730,8 @@ export default function App() {
       <Modal isOpen={!!modalContent} onClose={() => setModalContent(null)} title={getModalTitle()}>
         {renderModalContent()}
       </Modal>
+      
+      <PWAInstallPrompt t={t} />
 
       {/* Modal de búsqueda para móvil */}
       {isSearchModalOpen && (
@@ -734,6 +739,8 @@ export default function App() {
           <div className="relative">
             <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
             <input
+              id="mobile-search"
+              name="search"
               type="search"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}

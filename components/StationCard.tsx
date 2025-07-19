@@ -44,7 +44,7 @@ const StationCard: React.FC<StationCardProps> = ({
         onError={(e) => { (e.currentTarget as HTMLImageElement).src = defaultFavicon; }}
       />
       <div className="flex-grow min-w-0">
-        <h3 className="font-bold text-lg truncate text-gray-800 dark:text-gray-100">{station.name}</h3>
+        <h3 className="font-bold text-base truncate text-gray-800 dark:text-gray-100">{station.name}</h3>
         <p className="text-sm text-gray-500 dark:text-gray-400 truncate">{station.country || 'Unknown country'}</p>
         <div className="text-xs text-gray-400 dark:text-gray-500 mt-1 truncate">
           {station.tags.split(',').slice(0, 3).join(', ')}

@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Generate Icons</title>
+</head>
+<body>
+    <h1>Generating Icons...</h1>
+    <canvas id="canvas" style="display:none;"></canvas>
+    <script>
+        const sizes = [72, 96, 128, 144, 152, 192, 384, 512];
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Crear icono simple
+        function generateIcon(size) {
+            canvas.width = size;
+            canvas.height = size;
+            
+            // Fondo circular con gradiente
+            const gradient = ctx.createRadialGradient(size/2, size/2, 0, size/2, size/2, size/2);
+            gradient.addColorStop(0, '#3b82f6');
+            gradient.addColorStop(1, '#1e40af');
+            
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.arc(size/2, size/2, size/2 - 4, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            // Borde
+            ctx.strokeStyle = '#1e3a8a';
+            ctx.lineWidth = 4;
+            ctx.stroke();
+            
+            // Radio/altavoz
+            const speakerSize = size * 0.15;
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(size/2, size * 0.4, speakerSize, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            ctx.fillStyle = '#3b82f6';
+            ctx.beginPath();
+            ctx.arc(size/2, size * 0.4, speakerSize * 0.75, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(size/2, size * 0.4, speakerSize * 0.4, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            // Texto
+            ctx.fillStyle = '#ffffff';
+            ctx.font = `bold ${size * 0.08}px Arial`;
+            ctx.textAlign = 'center';
+            ctx.fillText('RADIO', size/2, size * 0.65);
+            
+            ctx.font = `${size * 0.045}px Arial`;
+            ctx.fillText('.GRATIS', size/2, size * 0.75);
+            
+            return canvas.toDataURL('image/png');
+        }
+        
+        // Generar y descargar iconos
+        sizes.forEach(size => {
+            const dataUrl = generateIcon(size);
+            const link = document.createElement('a');
+            link.download = `icon-${size}.png`;
+            link.href = dataUrl;
+            link.click();
+        });
+        
+        document.body.innerHTML = '<h1>Icons generated! Check your downloads folder.</h1>';
+    </script>
+</body>
+</html> 

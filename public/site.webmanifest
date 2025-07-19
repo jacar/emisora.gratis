@@ -10,15 +10,9 @@
   "start_url": "/",
   "icons": [
     {
-      "src": "https://www.webcincodev.com/blog/wp-content/uploads/2025/07/icono-Radio-1.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "maskable any"
-    },
-    {
-      "src": "https://www.webcincodev.com/blog/wp-content/uploads/2025/07/icono-Radio-1.png",
-      "sizes": "512x512",
-      "type": "image/png",
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
       "purpose": "maskable any"
     }
   ],

@@ -58,7 +58,7 @@ const SEOHead: React.FC<SEOHeadProps> = ({
         "name": "Top.emisoras",
         "logo": {
           "@type": "ImageObject",
-          "url": "https://top.emisoras.com/logo.png"
+          "url": "https://radio.gratis/logo.svg"
         }
       }
     };

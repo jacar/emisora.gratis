@@ -75,7 +75,7 @@ const HeroSlider = ({ onPlayStation, t }) => {
                 <div className="flex items-center gap-4">
                     <img src={currentSlide.favicon} alt={currentSlide.name} className="w-20 h-20 md:w-24 md:h-24 rounded-lg object-cover shadow-lg border-2 border-white/20"/>
                     <div className="flex-grow min-w-0">
-                         <h2 className="text-xl md:text-2xl font-black tracking-tight text-shadow">{currentSlide.name}</h2>
+                         <h2 className="text-lg md:text-2xl font-black tracking-tight text-shadow truncate">{currentSlide.name}</h2>
                          <p className="text-sm md:text-base opacity-80 truncate">{currentSlide.country}, {currentSlide.language.split(',')[0]}</p>
                     </div>
                     <button

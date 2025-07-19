@@ -31,9 +31,9 @@ const PWAInstallPrompt = ({ t }) => {
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     window.addEventListener('appinstalled', handleAppInstalled);
 
-    // Mostrar botón manual después de 2 segundos si no hay prompt automático
+    // Mostrar botón manual después de 2 segundos solo si hay prompt automático disponible
     const timer = setTimeout(() => {
-      if (!showInstallPrompt && !isStandalone) {
+      if (!showInstallPrompt && !isStandalone && deferredPrompt) {
         setShowManualInstall(true);
       }
     }, 2000);
@@ -47,8 +47,7 @@ const PWAInstallPrompt = ({ t }) => {
 
   const handleInstallClick = async () => {
     if (!deferredPrompt) {
-      // Si no hay prompt automático, mostrar instrucciones manuales
-      alert('Para instalar la app:\n\n1. En Chrome: Haz clic en el ícono de instalación en la barra de direcciones\n2. En Safari: Comparte y selecciona "Agregar a pantalla de inicio"\n3. En Firefox: Haz clic en el ícono de instalación en la barra de direcciones');
+      // Si no hay prompt automático, no hacer nada
       return;
     }
 

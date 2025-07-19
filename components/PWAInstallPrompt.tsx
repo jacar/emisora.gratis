@@ -31,12 +31,12 @@ const PWAInstallPrompt = ({ t }) => {
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     window.addEventListener('appinstalled', handleAppInstalled);
 
-    // Mostrar botón manual después de 3 segundos si no hay prompt automático
+    // Mostrar botón manual después de 2 segundos si no hay prompt automático
     const timer = setTimeout(() => {
       if (!showInstallPrompt && !isStandalone) {
         setShowManualInstall(true);
       }
-    }, 3000);
+    }, 2000);
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);

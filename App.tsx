@@ -15,7 +15,7 @@ import PWAInstallPrompt from './components/PWAInstallPrompt.jsx';
 import { HeartIcon, SunIcon, MoonIcon, SearchIcon, MenuIcon, GithubIcon, BriefcaseIcon, WhatsAppIcon, MicrophoneIcon, XIcon, ChevronUpIcon } from './components/Icons.jsx';
 import type { Station } from './types';
 
-const PAGE_SIZE = 10; // Reducido de 20 a 10 para carga más rápida
+const PAGE_SIZE = 15; // Optimizado para carga rápida
 
 const useDebounce = (value: any, delay: number): any => {
   const [debouncedValue, setDebouncedValue] = useState(value);
@@ -192,7 +192,7 @@ export default function App() {
       const stations = await apiCall(offset);
       if (!stations || stations.length === 0) break;
       const filtered = filterBlocked(stations);
-      const functional = await filterStationsByStream(filtered, 2000);
+      const functional = await filterStationsByStream(filtered, 1000);
       result = result.concat(functional);
       offset += stations.length;
       tries++;
@@ -595,10 +595,10 @@ export default function App() {
         )}
         <div className="container mx-auto px-4 py-3 relative">
                       <div className="flex justify-between items-center gap-2 md:gap-4">
-              <a href="/" onClick={(e) => { e.preventDefault(); handleHomeClick(); }} className="flex-shrink-0">
-                        <img src="/logo.svg" alt="Radio.gratis Logo" className="h-12 block dark:hidden" />
-        <img src="/logo-dark.svg" alt="Radio.gratis Logo Dark" className="h-12 hidden dark:block" />
-              </a>
+                              <a href="/" className="flex-shrink-0">
+                  <img src="/logo.svg" alt="Radio.gratis Logo" className="h-12 block dark:hidden" />
+                  <img src="/logo-dark.svg" alt="Radio.gratis Logo Dark" className="h-12 hidden dark:block" />
+                </a>
             
             {/* Buscador solo visible en md+ */}
             <div className="relative flex-1 min-w-0 max-w-xl hidden md:block">

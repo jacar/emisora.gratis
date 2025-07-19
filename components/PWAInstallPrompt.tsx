@@ -31,12 +31,16 @@ const PWAInstallPrompt = ({ t }) => {
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     window.addEventListener('appinstalled', handleAppInstalled);
 
-    // Mostrar botón manual después de 2 segundos solo si hay prompt automático disponible
+    // Mostrar botón manual después de 1 segundo en móvil
     const timer = setTimeout(() => {
-      if (!showInstallPrompt && !isStandalone && deferredPrompt) {
-        setShowManualInstall(true);
+      if (!showInstallPrompt && !isStandalone) {
+        // En móvil, mostrar siempre el botón manual
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        if (isMobile) {
+          setShowManualInstall(true);
+        }
       }
-    }, 2000);
+    }, 1000);
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
@@ -46,18 +50,28 @@ const PWAInstallPrompt = ({ t }) => {
   }, [showInstallPrompt, isStandalone]);
 
   const handleInstallClick = async () => {
-    if (!deferredPrompt) {
-      // Si no hay prompt automático, no hacer nada
-      return;
-    }
-
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    
-    if (outcome === 'accepted') {
-      setShowInstallPrompt(false);
-      setShowManualInstall(false);
-      setDeferredPrompt(null);
+    if (deferredPrompt) {
+      // Si hay prompt automático, usarlo
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      
+      if (outcome === 'accepted') {
+        setShowInstallPrompt(false);
+        setShowManualInstall(false);
+        setDeferredPrompt(null);
+      }
+    } else {
+      // Si no hay prompt automático, mostrar instrucciones manuales
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+      const isAndroid = /Android/.test(navigator.userAgent);
+      
+      if (isIOS) {
+        alert('Para instalar: toca el botón compartir y selecciona "Añadir a pantalla de inicio"');
+      } else if (isAndroid) {
+        alert('Para instalar: toca el menú del navegador y selecciona "Añadir a pantalla de inicio"');
+      } else {
+        alert('Para instalar: usa el menú del navegador y selecciona "Instalar aplicación"');
+      }
     }
   };
 

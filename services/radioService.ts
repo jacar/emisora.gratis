@@ -147,8 +147,8 @@ export const getMoreColombianStations = async (limit = 50, offset = 0) => {
   }
 };
 
-// Verifica si un stream responde correctamente en menos de 2 segundos
-export async function isStreamAvailable(url: string, timeout = 1000): Promise<boolean> {
+// Verifica si un stream responde correctamente en menos de 500ms
+export async function isStreamAvailable(url: string, timeout = 500): Promise<boolean> {
   return new Promise((resolve) => {
     const controller = new AbortController();
     const timer = setTimeout(() => {

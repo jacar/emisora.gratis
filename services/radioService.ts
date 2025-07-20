@@ -83,7 +83,81 @@ export const searchStations = (
   return fetchStations('stations/search', params);
 };
 
-export const getStationsByTag = (
+// @ts-ignore
+import RadioBrowser from 'radio-browser';
+
+// Fallback con radio-browser npm package
+async function radioBrowserFallbackByTag(tag: string, limit = 50, offset = 0) {
+  try {
+    const stations = await RadioBrowser.getStations({
+      tag,
+      limit,
+      offset,
+      hidebroken: true,
+      order: 'votes',
+      reverse: true
+    });
+    return stations;
+  } catch (error) {
+    return [];
+  }
+}
+
+// Fallback con Radio API (radio-api.com)
+const RADIO_API_KEY = 'TU_API_KEY_AQUI'; // Reemplaza por tu API Key de radio-api.com
+async function radioApiFallbackByTag(tag: string, limit = 50, offset = 0) {
+  try {
+    const url = `https://api.radio-api.com/search?apikey=${RADIO_API_KEY}&tag=${encodeURIComponent(tag)}&limit=${limit}&offset=${offset}`;
+    const resp = await fetch(url);
+    if (!resp.ok) return [];
+    const data = await resp.json();
+    // Normaliza el formato para que coincida con el resto de la app
+    return (data.stations || []).map((station: any) => ({
+      stationuuid: station.id || station.stationuuid || station.uuid || station.url,
+      name: station.name,
+      url_resolved: station.url,
+      favicon: station.favicon || '',
+      country: station.country || '',
+      tags: station.tags || '',
+      votes: station.votes || 0,
+    }));
+  } catch (error) {
+    return [];
+  }
+}
+
+// Fallback con Radio API para país o lista de países
+async function radioApiFallbackByCountry(countries: string | string[], limit = 50, offset = 0) {
+  try {
+    const countryList = Array.isArray(countries) ? countries : [countries];
+    let allResults: any[] = [];
+    for (const country of countryList) {
+      const url = `https://api.radio-api.com/search?apikey=${RADIO_API_KEY}&country=${encodeURIComponent(country)}&limit=${limit}&offset=${offset}`;
+      const resp = await fetch(url);
+      if (!resp.ok) continue;
+      const data = await resp.json();
+      const stations = (data.stations || []).map((station: any) => ({
+        stationuuid: station.id || station.stationuuid || station.uuid || station.url,
+        name: station.name,
+        url_resolved: station.url,
+        favicon: station.favicon || '',
+        country: station.country || '',
+        tags: station.tags || '',
+        votes: station.votes || 0,
+      }));
+      allResults = allResults.concat(stations);
+    }
+    // Elimina duplicados
+    return allResults.filter((station, index, self) =>
+      index === self.findIndex(s => s.stationuuid === station.stationuuid)
+    );
+  } catch (error) {
+    return [];
+  }
+}
+
+// Modifica getStationsByTag para usar el fallback de Radio API si tampoco hay resultados con radio-browser
+export const getStationsByTag = async (
   tag: string,
   limit = 50,
   offset = 0
@@ -95,7 +169,15 @@ export const getStationsByTag = (
     order: 'votes',
     reverse: 'true'
   };
-  return fetchStations(`stations/bytag/${tag}`, params);
+  const result = await fetchStations(`stations/bytag/${tag}`, params);
+  if (result.length === 0) {
+    // Fallback con radio-browser npm package
+    const rb = await radioBrowserFallbackByTag(tag, limit, offset);
+    if (rb.length > 0) return rb;
+    // Fallback con Radio API
+    return await radioApiFallbackByTag(tag, limit, offset);
+  }
+  return result;
 };
 
 // Nueva función para obtener emisoras por tag con múltiples estrategias
@@ -208,7 +290,7 @@ export const getMoreColombianStations = async (limit = 50, offset = 0) => {
   }
 };
 
-// Obtener emisoras por país o lista de países (con paginación)
+// Modifica getStationsByCountry para usar el fallback de Radio API si tampoco hay resultados
 export const getStationsByCountry = async (countries: string | string[], limit = 50, offset = 0) => {
   try {
     let countryParam = '';
@@ -217,7 +299,6 @@ export const getStationsByCountry = async (countries: string | string[], limit =
     } else {
       countryParam = countries;
     }
-    
     // Si no hay país específico, buscar emisoras globales
     if (!countryParam || countryParam === '') {
       return fetchStations('stations', {
@@ -228,7 +309,6 @@ export const getStationsByCountry = async (countries: string | string[], limit =
         reverse: 'true'
       });
     }
-    
     // Intentar múltiples estrategias de búsqueda
     const searchPromises = [
       fetchStations('stations/search', {
@@ -248,20 +328,29 @@ export const getStationsByCountry = async (countries: string | string[], limit =
         reverse: 'false'
       })
     ];
-    
     const results = await Promise.all(searchPromises);
     const allStations = results.flat();
-    
     // Eliminar duplicados y ordenar por votos
     const uniqueStations = allStations.filter((station, index, self) =>
       index === self.findIndex(s => s.stationuuid === station.stationuuid)
     );
-    
-    return uniqueStations
-      .sort((a, b) => (b.votes || 0) - (a.votes || 0))
-      .slice(0, limit);
+    if (uniqueStations.length > 0) {
+      return uniqueStations.sort((a, b) => (b.votes || 0) - (a.votes || 0)).slice(0, limit);
+    }
+    // Fallback con Radio API
+    const radioApiStations = await radioApiFallbackByCountry(countries, limit, offset);
+    if (radioApiStations.length > 0) {
+      return radioApiStations;
+    }
+    // Fallback final: emisoras globales populares
+    return fetchStations('stations', {
+      limit: limit.toString(),
+      offset: offset.toString(),
+      hidebroken: 'true',
+      order: 'votes',
+      reverse: 'true'
+    });
   } catch (error) {
-    console.warn('Error loading stations by country:', error);
     return [];
   }
 };
@@ -279,7 +368,6 @@ export async function isStreamAvailable(url: string, timeout = 300): Promise<boo
       controller.abort();
       resolve(false);
     }, timeout);
-    
     // Intentar con HEAD primero para ser más rápido
     fetch(url, {
       method: 'HEAD',
@@ -291,18 +379,27 @@ export async function isStreamAvailable(url: string, timeout = 300): Promise<boo
         clearTimeout(timer);
         resolve(true);
       })
-      .catch((error) => {
+      .catch(async (error) => {
         clearTimeout(timer);
-        // Si HEAD falla, intentar con GET
-        if (error.name === 'TypeError') {
-          fetch(url, {
-            method: 'GET',
-            mode: 'no-cors',
-            signal: controller.signal,
-            cache: 'no-cache',
-          })
-            .then(() => resolve(true))
-            .catch(() => resolve(false));
+        // Si HEAD falla con 405 o 403, intentar con GET
+        if (error && (error.message?.includes('405') || error.message?.includes('403') || error.name === 'TypeError')) {
+          try {
+            const controller2 = new AbortController();
+            const timer2 = setTimeout(() => {
+              controller2.abort();
+              resolve(false);
+            }, timeout);
+            await fetch(url, {
+              method: 'GET',
+              mode: 'no-cors',
+              signal: controller2.signal,
+              cache: 'no-cache',
+            });
+            clearTimeout(timer2);
+            resolve(true);
+          } catch {
+            resolve(false);
+          }
         } else {
           resolve(false);
         }

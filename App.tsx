@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { FixedSizeList } from 'react-window';
 import { translations, languages } from './i18n.js';
@@ -12,7 +11,7 @@ import HeroSlider from './components/HeroSlider.jsx';
 import FloatingNav from './components/FloatingNav.jsx';
 import SEOHead from './components/SEOHead.jsx';
 import PWAInstallPrompt from './components/PWAInstallPrompt.jsx';
-import { HeartIcon, SunIcon, MoonIcon, SearchIcon, MenuIcon, GithubIcon, BriefcaseIcon, WhatsAppIcon, MicrophoneIcon, XIcon, ChevronUpIcon } from './components/Icons.jsx';
+import { HeartIcon, SunIcon, MoonIcon, SearchIcon, MenuIcon, GithubIcon, BriefcaseIcon, WhatsAppIcon, MicrophoneIcon, XIcon, ChevronUpIcon, ShuffleIcon } from './components/Icons.jsx';
 import type { Station } from './types';
 import { AdSenseBlock } from './components/StationCard';
 
@@ -60,7 +59,7 @@ const ServiceBanner = ({ t, onClose }: { t: (key: string) => string; onClose: ()
   const whatsAppLink = `https://wa.me/${whatsAppNumber}?text=${message}`;
 
   return (
-    <div className="bg-brand-500 text-white rounded-lg p-3 md:p-6 my-4 md:my-6 flex flex-col md:flex-row items-center justify-between shadow-lg relative">
+    <div className="bg-[#5839AC] text-white rounded-lg p-3 md:p-6 my-4 md:my-6 flex flex-col md:flex-row items-center justify-between shadow-lg relative">
       {/* Botón de cierre - movido arriba a la izquierda */}
       <button
         onClick={onClose}
@@ -123,14 +122,13 @@ const ContactContent = ({ t }: { t: (key: string) => string }) => (
   </div>
 );
 
-
-export default function App() {
+function App() {
   // --- Hooks de estado y memo al inicio ---
   const [stations, setStations] = useState<Station[]>([]);
   const [currentStation, setCurrentStation] = useState<Station | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
   const [favoriteStations, setFavoriteStations] = useState<Station[]>([]);
   const [isLoadingFavorites, setIsLoadingFavorites] = useState(false);
   const { favoriteUuids, toggleFavorite, isFavorite } = useFavorites();
@@ -140,7 +138,7 @@ export default function App() {
   const [theme, setTheme] = useState(localStorage.getItem('theme') || 'light');
   const [language, setLanguage] = useState(localStorage.getItem('language') || 'es');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [modalContent, setModalContent] = useState(null);
+  const [modalContent, setModalContent] = useState<string | null>(null);
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
   const [showServiceBanner, setShowServiceBanner] = useState(() => {
     return localStorage.getItem('serviceBannerClosed') !== 'true';
@@ -151,9 +149,9 @@ export default function App() {
   const menuRef = useRef<HTMLDivElement | null>(null);
   const menuButtonRef = useRef<HTMLButtonElement | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const debouncedSearchTerm = useDebounce(searchTerm, 500);
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
   const [isListening, setIsListening] = useState(false);
-  const [voiceError, setVoiceError] = useState(null);
+  const [voiceError, setVoiceError] = useState<string | null>(null);
   const recognitionRef = useRef<any>(null);
   const [playbackErrorMsg, setPlaybackErrorMsg] = useState<string | null>(null);
   const BLOCKED_KEY = 'radioBlockedStations';
@@ -167,14 +165,19 @@ export default function App() {
   });
   // Nuevo: estado para emisoras no disponibles
   const [unavailableStations, setUnavailableStations] = useState<string[]>([]);
-  // --- Filtros de continente y país ---
+  // 1. Estados de filtros (asegúrate de que solo estén una vez)
   const [selectedContinent, setSelectedContinent] = useState<string>('Todos los continentes');
   const [selectedCountry, setSelectedCountry] = useState<string>('Latinoamérica');
+  const [selectedGenre, setSelectedGenre] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('');
+  const [showAllCountries, setShowAllCountries] = useState(false);
+  const [countrySearch, setCountrySearch] = useState('');
+  // Filtros de país calculados
   const filteredCountries = useMemo(() => {
     if (selectedContinent === 'Todos los continentes') {
-      return CONTINENTS.flatMap(c => c.countries).filter((v, i, a) => v && a.indexOf(v) === i);
+      return CONTINENTS.flatMap((c: { countries: string[] }) => c.countries).filter((v: string, i: number, a: string[]) => v && a.indexOf(v) === i);
     }
-    const continent = CONTINENTS.find(c => c.name === selectedContinent);
+    const continent = CONTINENTS.find((c: { name: string }) => c.name === selectedContinent);
     return continent ? continent.countries : [];
   }, [selectedContinent]);
 
@@ -350,6 +353,31 @@ export default function App() {
     'Nauru': 'Nauru',
     'Tuvalu': 'Tuvalu',
     'Kiribati': 'Kiribati'
+  };
+
+  // Utilidad para obtener el código de país (ISO 3166-1 alpha-2) a partir del nombre en español
+  const COUNTRY_CODE_MAP: Record<string, string> = {
+    'Argentina': 'ar', 'Bolivia': 'bo', 'Brasil': 'br', 'Chile': 'cl', 'Colombia': 'co', 'Costa Rica': 'cr', 'Cuba': 'cu', 'Ecuador': 'ec',
+    'El Salvador': 'sv', 'Guatemala': 'gt', 'Honduras': 'hn', 'México': 'mx', 'Nicaragua': 'ni', 'Panamá': 'pa', 'Paraguay': 'py',
+    'Perú': 'pe', 'Puerto Rico': 'pr', 'República Dominicana': 'do', 'Uruguay': 'uy', 'Venezuela': 've', 'Estados Unidos': 'us',
+    'Canadá': 'ca', 'Jamaica': 'jm', 'Haití': 'ht', 'Trinidad y Tobago': 'tt', 'Bahamas': 'bs', 'Barbados': 'bb', 'Belice': 'bz',
+    'Dominica': 'dm', 'Granada': 'gd', 'Guyana': 'gy', 'San Cristóbal y Nieves': 'kn', 'Santa Lucía': 'lc', 'San Vicente y las Granadinas': 'vc', 'Surinam': 'sr',
+    'España': 'es', 'Francia': 'fr', 'Alemania': 'de', 'Italia': 'it', 'Reino Unido': 'gb', 'Portugal': 'pt', 'Países Bajos': 'nl', 'Bélgica': 'be', 'Suiza': 'ch',
+    'Suecia': 'se', 'Noruega': 'no', 'Dinamarca': 'dk', 'Finlandia': 'fi', 'Irlanda': 'ie', 'Polonia': 'pl', 'Rusia': 'ru', 'Ucrania': 'ua', 'Rumanía': 'ro',
+    'Hungría': 'hu', 'Grecia': 'gr', 'Austria': 'at', 'República Checa': 'cz', 'Eslovaquia': 'sk', 'Bulgaria': 'bg', 'Croacia': 'hr', 'Serbia': 'rs',
+    'Eslovenia': 'si', 'Estonia': 'ee', 'Letonia': 'lv', 'Lituania': 'lt', 'Luxemburgo': 'lu', 'Malta': 'mt', 'Moldavia': 'md', 'Montenegro': 'me',
+    'Macedonia del Norte': 'mk', 'Bosnia y Herzegovina': 'ba', 'Albania': 'al', 'China': 'cn', 'Japón': 'jp', 'Corea del Sur': 'kr', 'India': 'in',
+    'Indonesia': 'id', 'Tailandia': 'th', 'Vietnam': 'vn', 'Filipinas': 'ph', 'Malasia': 'my', 'Singapur': 'sg', 'Pakistán': 'pk', 'Bangladés': 'bd',
+    'Arabia Saudita': 'sa', 'Israel': 'il', 'Irán': 'ir', 'Irak': 'iq', 'Turquía': 'tr', 'Kazajistán': 'kz', 'Uzbekistán': 'uz', 'Sri Lanka': 'lk',
+    'Nepal': 'np', 'Camboya': 'kh', 'Mongolia': 'mn', 'Afganistán': 'af', 'Kuwait': 'kw', 'Qatar': 'qa', 'Emiratos Árabes Unidos': 'ae', 'Jordania': 'jo',
+    'Líbano': 'lb', 'Siria': 'sy', 'Omán': 'om', 'Yemen': 'ye', 'Sudáfrica': 'za', 'Nigeria': 'ng', 'Egipto': 'eg', 'Argelia': 'dz', 'Marruecos': 'ma',
+    'Etiopía': 'et', 'Kenia': 'ke', 'Ghana': 'gh', 'Túnez': 'tn', 'Angola': 'ao', 'Mozambique': 'mz', 'Senegal': 'sn', 'Camerún': 'cm', 'Costa de Marfil': 'ci',
+    'Tanzania': 'tz', 'Uganda': 'ug', 'Zimbabue': 'zw', 'República Democrática del Congo': 'cd', 'Sudán': 'sd', 'Libia': 'ly', 'Botsuana': 'bw', 'Namibia': 'na',
+    'Ruanda': 'rw', 'Gabón': 'ga', 'Mauricio': 'mu', 'Seychelles': 'sc', 'Madagascar': 'mg', 'Malawi': 'mw', 'Burkina Faso': 'bf', 'Níger': 'ne', 'Benín': 'bj',
+    'Chad': 'td', 'Guinea': 'gn', 'Cabo Verde': 'cv', 'Somalia': 'so', 'Sierra Leona': 'sl', 'Togo': 'tg', 'Gambia': 'gm', 'Liberia': 'lr', 'República Centroafricana': 'cf',
+    'Eritrea': 'er', 'Guinea-Bisáu': 'gw', 'Lesoto': 'ls', 'Suazilandia': 'sz', 'Yibuti': 'dj', 'Comoras': 'km', 'Santo Tomé y Príncipe': 'st', 'Australia': 'au',
+    'Nueva Zelanda': 'nz', 'Fiyi': 'fj', 'Papúa Nueva Guinea': 'pg', 'Samoa': 'ws', 'Tonga': 'to', 'Vanuatu': 'vu', 'Islas Salomón': 'sb', 'Micronesia': 'fm',
+    'Islas Marshall': 'mh', 'Palaos': 'pw', 'Nauru': 'nr', 'Tuvalu': 'tv', 'Kiribati': 'ki'
   };
 
   // Simplificar t para evitar errores de tipado
@@ -528,37 +556,52 @@ export default function App() {
   // Función simple para cargar más emisoras
   const loadMoreStations = useCallback(async () => {
     if (isLoading) return;
-    
     setIsLoading(true);
     try {
       let newStations: Station[] = [];
-      
+      // Si hay búsqueda activa
       if (view === 'search' && debouncedSearchTerm) {
         newStations = await searchStations(debouncedSearchTerm, PAGE_SIZE, offset.current);
-      } else if (view === 'random') {
-        return; // No cargar más en vista aleatoria
+      } else if (selectedContinent !== 'Todos los continentes') {
+        // Scroll infinito por continente: consulta país por país con offset
+        const countries = CONTINENTS.find(c => c.name === selectedContinent)?.countries || [];
+        let allResults: Station[] = [];
+        for (const country of countries) {
+          const result = await getStationsByCountry(country, PAGE_SIZE, offset.current);
+          allResults = allResults.concat(result);
+        }
+        newStations = allResults.filter((station, index, self) =>
+          index === self.findIndex(s => s.stationuuid === station.stationuuid)
+        );
+      } else if (selectedCountry && selectedCountry !== 'Latinoamérica' && selectedCountry !== 'Todos' && selectedCountry !== 'Todos los países') {
+        newStations = await getStationsByCountry(selectedCountry, PAGE_SIZE, offset.current);
+      } else if (selectedGenre) {
+        // Scroll infinito por género
+        newStations = await getStationsByTag(selectedGenre.toLowerCase(), PAGE_SIZE, offset.current);
       } else {
-        newStations = await fetchStationsByCountry(offset.current);
+        newStations = await getStationsByCountry('', PAGE_SIZE, offset.current);
       }
-      
       if (newStations && newStations.length > 0) {
-        setStations(prev => [...prev, ...newStations]);
+        setStations(prev => {
+          // Filtrar duplicados por stationuuid
+          const all = [...prev, ...newStations];
+          return all.filter((station, index, self) =>
+            index === self.findIndex(s => s.stationuuid === station.stationuuid)
+          );
+        });
         offset.current += newStations.length;
-        setHasMore(true); // Siempre permitir más carga
+        setHasMore(true);
       } else {
-        // Si no hay emisoras, incrementar offset y seguir intentando
         offset.current += PAGE_SIZE;
-        setHasMore(true); // Mantener hasMore en true para seguir intentando
+        setHasMore(true);
       }
     } catch (err) {
-      console.error("Error loading more stations:", err);
-      // Incrementar offset y seguir intentando
       offset.current += PAGE_SIZE;
-      setHasMore(true); // Mantener hasMore en true para seguir intentando
+      setHasMore(true);
     } finally {
       setIsLoading(false);
     }
-  }, [isLoading, PAGE_SIZE, view, debouncedSearchTerm, fetchStationsByCountry]);
+  }, [isLoading, PAGE_SIZE, view, debouncedSearchTerm, selectedContinent, selectedCountry, selectedGenre]);
 
   // Modificar el observer para infinite scroll global
   const lastStationElementRef = useCallback((node: Element | null) => {
@@ -593,14 +636,12 @@ export default function App() {
   }, [selectedCountry, view]);
 
   useEffect(() => {
-    // Do not trigger search changes while a random search is loading to prevent race conditions.
+    // No activar búsqueda mientras se carga aleatorio
     if (isRandomLoading) return;
     
     if (view === 'search' && !debouncedSearchTerm) {
-      // If search is cleared, go home
       setView('default');
     } else if (debouncedSearchTerm && view === 'search') {
-      // Cargar búsqueda inicial
       setIsLoading(true);
       searchStations(debouncedSearchTerm, PAGE_SIZE, 0)
         .then(stations => {
@@ -647,27 +688,26 @@ export default function App() {
     };
   }, [isMenuOpen]);
 
-  // Cambia la carga inicial para usar PAGE_SIZE - solo una vez al montar
+  // 2. Carga inicial de emisoras globales
   useEffect(() => {
     const loadInitialStations = async () => {
       setIsLoading(true);
       setError(null);
       try {
-        // Usar la función agresiva para obtener más emisoras
-        const fastLatino = await getStationsByTagAggressive('latino', PAGE_SIZE * 2, 0);
-        const filtered = filterBlocked(fastLatino);
+        const globalStations = await getStationsByCountry('', PAGE_SIZE * 2, 0);
+        const filtered = filterBlocked(globalStations);
         setStations(filtered);
-        setHasMore(true); // Siempre permitir más carga
+        setHasMore(true);
         offset.current = PAGE_SIZE * 2;
       } catch (err) {
+        setError('No se pudieron cargar emisoras. Intenta de nuevo.' as any);
         console.error("Failed to fetch initial stations:", err);
-        // No mostrar error al usuario
       } finally {
         setIsLoading(false);
       }
     };
     loadInitialStations();
-  }, []); // Solo ejecutar al montar el componente
+  }, []);
 
   const toggleTheme = () => {
     setTheme(theme === 'light' ? 'dark' : 'light');
@@ -897,7 +937,7 @@ export default function App() {
 
   // Nuevo: efecto para búsqueda local en móvil
   useEffect(() => {
-    if (typeof window !== 'undefined' && window.innerWidth < 768 && debouncedSearchTerm) {
+    if (typeof window !== 'undefined' && window.innerWidth < 768 && debouncedSearchTerm && debouncedSearchTerm.length >= 2) {
       const term = debouncedSearchTerm.toLowerCase();
       const results = stations.filter(station =>
         station.name.toLowerCase().includes(term) ||
@@ -906,7 +946,7 @@ export default function App() {
       );
       setLocalSearchResults(results);
       setView('search');
-    } else if (typeof window !== 'undefined' && window.innerWidth < 768 && !debouncedSearchTerm) {
+    } else if (typeof window !== 'undefined' && window.innerWidth < 768 && (!debouncedSearchTerm || debouncedSearchTerm.length < 2)) {
       setLocalSearchResults([]);
       setView('default');
     }
@@ -925,6 +965,185 @@ export default function App() {
     }
   }, [selectedContinent, filteredCountries, selectedCountry]);
 
+  // 3. Filtrado robusto y combinable
+  const filteredStations = useMemo(() => {
+    const isDefault =
+      (selectedContinent === 'Todos los continentes' || !selectedContinent) &&
+      (selectedCountry === 'Latinoamérica' || selectedCountry === 'Todos' || selectedCountry === 'Todos los países' || !selectedCountry) &&
+      !selectedGenre &&
+      !selectedCategory;
+    if (isDefault) return stations;
+    let result = stations;
+    if (selectedContinent && selectedContinent !== 'Todos los continentes') {
+      const countriesInContinent = CONTINENTS.find(c => c.name === selectedContinent)?.countries || [];
+      result = result.filter(station => countriesInContinent.includes(station.country || ''));
+    }
+    if (selectedCountry && selectedCountry !== 'Latinoamérica' && selectedCountry !== 'Todos' && selectedCountry !== 'Todos los países') {
+      result = result.filter(station => station.country === selectedCountry);
+    }
+    if (selectedGenre) {
+      result = result.filter(station => station.tags && station.tags.toLowerCase().includes(selectedGenre.toLowerCase()));
+    }
+    if (selectedCategory === 'Populares') {
+      result = [...result].sort((a, b) => (b.votes || 0) - (a.votes || 0));
+    } else if (selectedCategory === 'Nuevas') {
+      result = [...result].sort((a, b) => (a.votes || 0) - (b.votes || 0));
+    } else if (selectedCategory === 'Recomendadas') {
+      result = [...result].sort(() => Math.random() - 0.5);
+    }
+    return result;
+  }, [stations, selectedContinent, selectedCountry, selectedGenre, selectedCategory]);
+
+  // 4. Botones de filtro con feedback visual, tooltips, accesibilidad y reseteo de país
+  // (ya implementado en la última mejora)
+
+  // 5. Loader visible mientras se cargan emisoras
+  // (ya implementado)
+
+  // 6. Mensaje claro si no hay resultados tras filtrar
+  // (ya implementado)
+
+  // 7. Scroll infinito robusto y sin duplicados
+  // (ya implementado en loadMoreStations)
+
+  // 8. Modal para mostrar todos los países si hay más de 10
+  {showAllCountries && (
+    <Modal isOpen={showAllCountries} onClose={() => setShowAllCountries(false)} title="Selecciona un país">
+      <input
+        type="text"
+        placeholder="Buscar país..."
+        value={countrySearch}
+        onChange={e => setCountrySearch(e.target.value)}
+        className="w-full mb-4 p-2 border rounded bg-white text-gray-800 dark:bg-gray-900 dark:text-gray-100"
+        autoFocus
+      />
+      <div className="max-h-96 min-h-[200px] overflow-y-auto space-y-2 bg-white dark:bg-gray-900 border border-brand-500 rounded-lg p-2 shadow-lg">
+        {(countrySearch.trim() === '' ? filteredCountries : filteredCountries.filter((c: string) => c.toLowerCase().includes(countrySearch.toLowerCase()))).length === 0 ? (
+          <div className="text-center text-gray-500 py-8">No hay países disponibles.</div>
+        ) : (
+          (countrySearch.trim() === '' ? filteredCountries : filteredCountries.filter((c: string) => c.toLowerCase().includes(countrySearch.toLowerCase()))).map((country: string) => (
+            <button
+              key={country}
+              className={`block w-full text-left px-4 py-2 rounded hover:bg-brand-100 dark:hover:bg-brand-900 ${selectedCountry === country ? 'bg-brand-500 text-white' : 'text-gray-800 dark:text-gray-100'}`}
+              onClick={() => {
+                setSelectedCountry(country);
+                setShowAllCountries(false);
+                setCountrySearch('');
+              }}
+            >
+              <img
+                src={COUNTRY_CODE_MAP[country] ? `https://flagcdn.com/24x18/${COUNTRY_CODE_MAP[country]}.png` : '/logo.svg'}
+                alt={country}
+                className="inline-block mr-2 rounded-sm align-middle w-5 h-4 object-cover bg-gray-200 dark:bg-gray-700"
+              />
+              {country}
+            </button>
+          ))
+        )}
+      </div>
+      <button className="mt-4 px-4 py-2 bg-red-100 text-red-700 rounded w-full border border-red-300" onClick={() => setShowAllCountries(false)}>Cerrar</button>
+    </Modal>
+  )}
+
+  // 9. Mensaje de error si la API falla
+  {error && (
+    <div className="text-center text-red-500 mb-4">{error}</div>
+  )}
+
+  useEffect(() => {
+    const fetchByFilters = async () => {
+      setIsLoading(true);
+      setError(null);
+      let emisoras: Station[] = [];
+      try {
+        if (view === 'search' && debouncedSearchTerm && debouncedSearchTerm.length >= 2) {
+          emisoras = await searchStations(debouncedSearchTerm, PAGE_SIZE * 2, 0);
+        } else if (selectedContinent !== 'Todos los continentes') {
+          const countries = CONTINENTS.find(c => c.name === selectedContinent)?.countries || [];
+          let allResults: Station[] = [];
+          for (const country of countries) {
+            const result = await getStationsByCountry(country, PAGE_SIZE, 0);
+            allResults = allResults.concat(result);
+          }
+          emisoras = allResults.filter((station, index, self) =>
+            index === self.findIndex(s => s.stationuuid === station.stationuuid)
+          );
+        } else if (selectedCountry && selectedCountry !== 'Latinoamérica' && selectedCountry !== 'Todos' && selectedCountry !== 'Todos los países') {
+          emisoras = await getStationsByCountry(selectedCountry, PAGE_SIZE * 2, 0);
+        } else if (selectedGenre) {
+          // Primero intenta filtrar localmente
+          const globalStations = await getStationsByCountry('', PAGE_SIZE * 2, 0);
+          emisoras = globalStations.filter((station: Station) => station.tags && station.tags.toLowerCase().includes(selectedGenre.toLowerCase()));
+          // Si no hay resultados, consulta la API por tag
+          if (emisoras.length === 0) {
+            emisoras = await getStationsByTag(selectedGenre.toLowerCase(), PAGE_SIZE * 2, 0);
+          }
+        } else {
+          emisoras = await getStationsByCountry('', PAGE_SIZE * 2, 0);
+        }
+        const filtered = filterBlocked(emisoras);
+        if (filtered.length === 0) {
+          // Fallback: mostrar emisoras populares globales si no hay resultados
+          const fallback = await getStationsByCountry('', PAGE_SIZE * 2, 0);
+          const fallbackFiltered = filterBlocked(fallback).sort((a, b) => (b.votes || 0) - (a.votes || 0));
+          setStations(fallbackFiltered);
+          setHasMore(fallbackFiltered.length >= PAGE_SIZE);
+          offset.current = fallbackFiltered.length;
+          if (fallbackFiltered.length === 0) {
+            setError('No se encontraron emisoras para los filtros seleccionados.');
+          }
+        } else {
+          setStations(filtered);
+          setHasMore(filtered.length >= PAGE_SIZE);
+          offset.current = filtered.length;
+        }
+      } catch (err) {
+        setError('No se pudieron cargar emisoras. Intenta de nuevo.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchByFilters();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedContinent, selectedCountry, selectedGenre]);
+
+  // Estado para el acordeón de países
+  const [showAccordionCountries, setShowAccordionCountries] = useState(false);
+  const [accordionCountrySearch, setAccordionCountrySearch] = useState('');
+
+  // Nueva función para buscar emisoras aleatorias cada vez que se hace clic
+  const handleMultiRandom = async () => {
+    setSelectedContinent('Todos los continentes');
+    setSelectedCountry('Latinoamérica');
+    setSelectedGenre('');
+    setSelectedCategory('');
+    setSearchTerm('');
+    try {
+      const randomStations = await fetchRandomStations(PAGE_SIZE * 2);
+      setView('random');
+      setStations(randomStations);
+      setHasMore(false);
+      offset.current = randomStations.length;
+    } catch (err) {
+      setError(t('error'));
+    }
+  };
+
+  // Restaurar GENRE_ICONS solo con los géneros usados
+  const GENRE_ICONS: Record<string, string> = {
+    'Pop': '🎵',
+    'Rock': '🎸',
+    'Noticias': '📰',
+    'Deportes': '⚽',
+    'Clásica': '🎻',
+    'Jazz': '🎷',
+    'Reggaeton': '🔥',
+    'Electrónica': '🎧',
+    'Cumbia': '🪗',
+    'Salsa': '🥁',
+    'Variado': '🌈',
+  };
+
   return (
     <div className="min-h-screen text-gray-800 dark:text-gray-200 font-sans flex flex-col overflow-x-hidden">
       <SEOHead 
@@ -932,7 +1151,7 @@ export default function App() {
           name: currentStation.name,
           country: currentStation.country || 'Unknown',
           genre: currentStation.tags || 'Radio',
-          url: currentStation.url_resolved || currentStation.url
+          url: currentStation.url_resolved
         } : undefined}
       />
       <header className="sticky top-0 z-30 bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg shadow-sm">
@@ -956,7 +1175,11 @@ export default function App() {
                 name="search"
                 type="search"
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  if (e.target.value.length > 0) setView('search');
+                  else setView('default');
+                }}
                 placeholder={t('searchPlaceholder')}
                 className="w-full pl-10 pr-12 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 focus:ring-2 focus:ring-brand-500 focus:border-transparent outline-none transition"
               />
@@ -1000,36 +1223,195 @@ export default function App() {
         </div>
       </header>
       
-      <main className={`container mx-auto p-4 flex-grow w-full ${currentStation ? 'pb-40 md:pb-32' : 'pb-24'}`}>
-        {view !== 'search' && <HeroSlider onPlayStation={handlePlay} t={t} />}
-
-        {view === 'default' && showServiceBanner && <ServiceBanner t={t} onClose={closeServiceBanner} />}
-
-        {/* Filtro visual para elegir país y continente */}
-        <div className="mb-4 flex flex-col sm:flex-row flex-wrap gap-2 items-stretch sm:items-center">
-          <label className="font-semibold mr-2 sm:mb-0 mb-1">Continente:</label>
-          <select
-            className="p-2 rounded border dark:bg-gray-800 dark:text-white w-full sm:w-auto"
-            value={selectedContinent}
-            onChange={e => setSelectedContinent(e.target.value)}
-          >
-            {CONTINENTS.map(cont => (
-              <option key={cont.name} value={cont.name}>{cont.name}</option>
-            ))}
-          </select>
-          <label className="font-semibold mx-2 sm:mb-0 mb-1">País:</label>
-          <select
-            className="p-2 rounded border dark:bg-gray-800 dark:text-white w-full sm:w-auto"
-            value={selectedCountry}
-            onChange={e => setSelectedCountry(e.target.value)}
-          >
-            <option value="Latinoamérica">Latinoamérica</option>
-            {filteredCountries.map(country => (
-              <option key={country} value={country}>{country}</option>
-            ))}
-            <option value="Todos">Todos los países</option>
-          </select>
-        </div>
+      <main className={`container mx-auto p-4 flex-grow w-full ${currentStation ? 'pb-40 md:pb-32' : 'pb-24'} mb-32`}>
+        {view !== 'search' && (
+          <>
+            {/* HeroSlider siempre arriba */}
+            <HeroSlider onPlayStation={handlePlay} t={t} />
+            {/* Banner siempre después del HeroSlider en default y random */}
+            {(view === 'default' || view === 'random') && showServiceBanner && (
+              <ServiceBanner t={t} onClose={closeServiceBanner} />
+            )}
+            {/* Filtros visualmente separados y destacados */}
+            <div className="mb-8 flex flex-col gap-4 rounded-2xl p-6 bg-gradient-to-br from-[#ede7fa] via-[#f3eaff] to-[#e3d6fa] border-2 border-[#5839AC]/40 shadow-lg">
+              {/* Bloque de Continente */}
+              <div className="flex flex-wrap gap-2 items-center p-2 rounded-lg border border-[#5839AC]/30 bg-white dark:bg-gray-900 shadow-sm">
+                <span className="font-semibold mr-2 text-[#5839AC] dark:text-white">Continente:</span>
+                {CONTINENTS.filter(c => c.name !== 'Todos los continentes').map(cont => (
+                  <button
+                    key={cont.name}
+                    className={`px-3 py-1 rounded-full border text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-[#5839AC] ${selectedContinent === cont.name ? 'bg-[#5839AC] text-white dark:text-white border-[#5839AC] shadow-md' : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-600 hover:bg-[#ede7fa] dark:hover:bg-[#5839AC]/20'}`}
+                    onClick={() => {
+                      setSelectedContinent(cont.name);
+                      setSelectedCountry('Todos');
+                    }}
+                    title={`Filtrar por continente: ${cont.name}`}
+                    aria-pressed={selectedContinent === cont.name}
+                  >
+                    {cont.name}
+                  </button>
+                ))}
+              </div>
+              {/* Bloque de País */}
+              <div className="flex flex-col gap-2 p-2 rounded-lg border border-[#5839AC]/30 bg-white dark:bg-gray-900 shadow-sm">
+                <div className="flex flex-wrap gap-2 items-center">
+                  <span className="font-semibold mr-2 text-[#5839AC] dark:text-white">País:</span>
+                  {filteredCountries.slice(0, 10).map(country => (
+                    <button
+                      key={country}
+                      className={`px-3 py-1 rounded-full border text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-[#5839AC] ${selectedCountry === country ? 'bg-[#5839AC] text-white dark:text-white border-[#5839AC] shadow-md' : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-600 hover:bg-[#ede7fa] dark:hover:bg-[#5839AC]/20'}`}
+                      onClick={() => setSelectedCountry(country)}
+                      title={`Filtrar por país: ${country}`}
+                      aria-pressed={selectedCountry === country}
+                    >
+                      <img
+                        src={COUNTRY_CODE_MAP[country] ? `https://flagcdn.com/24x18/${COUNTRY_CODE_MAP[country]}.png` : '/logo.svg'}
+                        alt={country}
+                        className="inline-block mr-2 rounded-sm align-middle w-5 h-4 object-cover bg-gray-200 dark:bg-gray-700"
+                      />
+                      {country}
+                    </button>
+                  ))}
+                  {filteredCountries.length > 10 && (
+                    <button
+                      className="px-3 py-1 rounded-full border text-sm bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 border-gray-300 dark:border-gray-600"
+                      onClick={() => setShowAccordionCountries(v => !v)}
+                    >
+                      {showAccordionCountries ? 'Mostrar menos' : `Mostrar más países (${filteredCountries.length - 10})`}
+                    </button>
+                  )}
+                </div>
+                {showAccordionCountries && (
+                  <div className="mt-2 p-2 bg-gray-50 dark:bg-gray-800 rounded-lg border border-[#5839AC]/30">
+                    <input
+                      type="text"
+                      placeholder="Buscar país..."
+                      value={accordionCountrySearch}
+                      onChange={e => setAccordionCountrySearch(e.target.value)}
+                      className="w-full mb-2 p-2 border rounded bg-white text-gray-800 dark:bg-gray-900 dark:text-gray-100"
+                    />
+                    <div className="max-h-64 overflow-y-auto space-y-2">
+                      {filteredCountries.slice(10).filter((c: string) => c.toLowerCase().includes(accordionCountrySearch.toLowerCase())).length === 0 ? (
+                        <div className="text-center text-gray-500 py-4">No hay países disponibles.</div>
+                      ) : (
+                        filteredCountries.slice(10).filter((c: string) => c.toLowerCase().includes(accordionCountrySearch.toLowerCase())).map((country: string) => (
+                          <button
+                            key={country}
+                            className={`block w-full text-left px-4 py-2 rounded hover:bg-[#ede7fa] dark:hover:bg-[#5839AC]/20 ${selectedCountry === country ? 'bg-[#5839AC] text-white' : 'text-gray-800 dark:text-gray-100'}`}
+                            onClick={() => {
+                              setSelectedCountry(country);
+                              setShowAccordionCountries(false);
+                              setAccordionCountrySearch('');
+                            }}
+                          >
+                            <img
+                              src={COUNTRY_CODE_MAP[country] ? `https://flagcdn.com/24x18/${COUNTRY_CODE_MAP[country]}.png` : '/logo.svg'}
+                              alt={country}
+                              className="inline-block mr-2 rounded-sm align-middle w-5 h-4 object-cover bg-gray-200 dark:bg-gray-700"
+                            />
+                            {country}
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+              {/* Bloque de Género */}
+              <div className="flex flex-wrap gap-2 items-center p-2 rounded-lg border border-[#5839AC]/30 bg-white dark:bg-gray-900 shadow-sm">
+                <span className="font-semibold mr-2 text-[#5839AC] dark:text-white">Género:</span>
+                {["Pop", "Rock", "Noticias", "Deportes", "Clásica", "Jazz", "Reggaeton", "Electrónica", "Cumbia", "Salsa", "Variado"].map(genero => (
+                  <button
+                    key={genero}
+                    className={`px-3 py-1 rounded-full border text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-[#5839AC] ${selectedGenre === genero ? 'bg-[#5839AC] text-white dark:text-white border-[#5839AC] shadow-md' : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-600 hover:bg-[#ede7fa] dark:hover:bg-[#5839AC]/20'}`}
+                    onClick={() => setSelectedGenre(selectedGenre === genero ? '' : genero)}
+                    title={`Filtrar por género: ${genero}`}
+                    aria-pressed={selectedGenre === genero}
+                  >
+                    <span className="mr-2 text-lg align-middle">{GENRE_ICONS[genero]}</span>
+                    {genero}
+                  </button>
+                ))}
+              </div>
+              {/* Bloque de Categoría y limpiar filtros */}
+              <div className="flex flex-wrap gap-2 items-center p-2 rounded-lg border border-[#5839AC]/30 bg-white dark:bg-gray-900 shadow-sm">
+                <span className="font-semibold mr-2 text-[#5839AC] dark:text-white">Categoría:</span>
+                {["Populares", "Nuevas", "Recomendadas"].map(cat => (
+                  <button
+                    key={cat}
+                    className={`px-3 py-1 rounded-full border text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-[#5839AC] ${selectedCategory === cat ? 'bg-[#5839AC] text-white dark:text-white border-[#5839AC] shadow-md' : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-600 hover:bg-[#ede7fa] dark:hover:bg-[#5839AC]/20'}`}
+                    onClick={() => setSelectedCategory(selectedCategory === cat ? '' : cat)}
+                    title={`Filtrar por categoría: ${cat}`}
+                    aria-pressed={selectedCategory === cat}
+                  >
+                    {cat}
+                  </button>
+                ))}
+                <button
+                  className="ml-4 px-3 py-1 rounded-full border text-sm bg-red-100 text-red-700 border-red-300 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-red-400"
+                  onClick={() => {
+                    setSelectedContinent('Todos los continentes');
+                    setSelectedCountry('Latinoamérica');
+                    setSelectedGenre('');
+                    setSelectedCategory('');
+                  }}
+                  title="Limpiar todos los filtros"
+                >
+                  Limpiar filtros
+                </button>
+                {isLoading && <span className="ml-2 text-[#5839AC] animate-pulse">Cargando emisoras...</span>}
+              </div>
+            </div>
+            {/* Grid principal de todas las emisoras (restaurado, sin imagen) */}
+            <section className="rounded-2xl p-6 mb-8 bg-gradient-to-br from-[#f3eaff] via-[#ede7fa] to-[#e3d6fa] shadow-lg border border-[#5839AC]/20">
+              <div className="flex items-center gap-3 mb-6">
+                <span className="text-3xl">📻</span>
+                <h2 className="text-2xl font-bold text-[#5839AC] dark:text-white">Lo más sonado</h2>
+                {/* Icono aleatorio */}
+                <button
+                  onClick={handleMultiRandom}
+                  className="ml-4 p-2 rounded-full border-2 border-[#5839AC] bg-white dark:bg-gray-900 shadow hover:bg-[#ede7fa] dark:hover:bg-[#5839AC]/20 transition-colors"
+                  title="Búsqueda infinita"
+                  aria-label="Búsqueda infinita"
+                >
+                  <svg className="w-7 h-7 text-[#5839AC]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path></svg>
+                </button>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+                {filteredStations.map((station: Station, index: number) => {
+                  const isLastItem = index === filteredStations.length - 1;
+                  const isUnavailable = unavailableStations?.includes(station.stationuuid);
+                  return (
+                    <div
+                      key={station.stationuuid}
+                      ref={isLastItem ? lastStationElementRef : null}
+                      className="transition-transform duration-200 hover:-translate-y-2 hover:shadow-2xl rounded-xl border-2 border-[#5839AC]/30 bg-white dark:bg-gray-900 shadow-md"
+                    >
+                      <StationCard
+                        station={station}
+                        onPlay={handlePlay}
+                        isFavorite={isFavorite(station.stationuuid)}
+                        onToggleFavorite={toggleFavorite}
+                        isPlaying={isPlaying}
+                        currentStationUuid={currentStation?.stationuuid ?? null}
+                        t={t}
+                        isUnavailable={isUnavailable}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+            {/* Imagen promocional en bloque propio, solo escritorio */}
+            <div className="hidden lg:flex items-center justify-center mb-8">
+              <img
+                src="https://www.webcincodev.com/blog/wp-content/uploads/2025/07/Diseno-sin-titulo-6.png"
+                alt="Promoción"
+                className="rounded-2xl shadow-xl border-4 border-[#5839AC] max-w-full h-auto object-cover"
+              />
+            </div>
+          </>
+        )}
 
         <div className="flex justify-between items-baseline mb-6">
           <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100 truncate">{headerTitle}</h2>
@@ -1040,11 +1422,11 @@ export default function App() {
         
         {(isLoading || isColombianLoading) && stations.length === 0 ? (
           <div className="flex justify-center items-center h-64"><Spinner className="w-12 h-12 text-brand-500" /></div>
-        ) : stations.length > 0 ? (
+        ) : filteredStations.length > 0 ? (
           <>
             <div className="space-y-4">
-              {stations.map((station, index) => {
-                const isLastItem = index === stations.length - 1;
+              {filteredStations.map((station: Station, index: number) => {
+                const isLastItem = index === filteredStations.length - 1;
                 const isUnavailable = unavailableStations?.includes(station.stationuuid);
                 return (
                   <div key={station.stationuuid} ref={isLastItem ? lastStationElementRef : null}>
@@ -1107,7 +1489,11 @@ export default function App() {
               name="search"
               type="search"
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                if (e.target.value.length > 0) setView('search');
+                else setView('default');
+              }}
               placeholder={t('searchPlaceholder')}
               className="w-full pl-10 pr-12 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 focus:ring-2 focus:ring-brand-500 focus:border-transparent outline-none transition"
               autoFocus
@@ -1152,14 +1538,19 @@ export default function App() {
         </Modal>
       )}
 
-      <footer className="bg-white dark:bg-gray-800 border-t dark:border-gray-700 py-6 text-center text-sm text-gray-500 dark:text-gray-400">
-        <div className="container mx-auto">
-            <p>&copy; 2025 webcincodev. {t('rightsReserved')}.</p>
-            <div className="mt-2">
-                <button onClick={() => openModal('terms')} className="mx-2 hover:text-brand-500">{t('terms')}</button>
-                <span className="opacity-50">|</span>
-                <button onClick={() => openModal('privacy')} className="mx-2 hover:text-brand-500">{t('privacy')}</button>
-            </div>
+      <footer className="w-full bg-gradient-to-r from-[#5839AC] via-[#432885] to-[#5839AC] text-white py-14 pb-24 mt-12 relative z-0 border-t-4 border-[#432885]/40 shadow-2xl">
+        <div className="container mx-auto flex flex-col md:flex-row justify-between items-center gap-6 px-4">
+          <div className="flex flex-col md:flex-row gap-6 items-center text-lg font-semibold">
+            <a href="#" onClick={() => setModalContent('terms')} className="hover:underline transition-colors">Políticas de uso</a>
+            <span className="hidden md:inline">|</span>
+            <a href="#" onClick={() => setModalContent('privacy')} className="hover:underline transition-colors">Política de privacidad</a>
+            <span className="hidden md:inline">|</span>
+            <a href="#" onClick={() => setModalContent('contact')} className="hover:underline transition-colors">Contacto y soporte</a>
+          </div>
+          <div className="text-base opacity-90 text-center md:text-right leading-relaxed">
+            <span className="block md:inline">© {new Date().getFullYear()} <b>Radio.gratis</b>. Todos los derechos reservados.</span><br className="md:hidden"/>
+            ¿Tienes una emisora? <a href="mailto:contacto@radio.gratis" className="underline hover:text-brand-200 font-bold transition-colors">Solicita tu inclusión</a>
+          </div>
         </div>
       </footer>
 
@@ -1175,3 +1566,5 @@ export default function App() {
     </div>
   );
 }
+
+export default App;

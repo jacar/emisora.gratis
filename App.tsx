@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { FixedSizeList } from 'react-window';
 import { translations, languages } from './i18n.js';
-import { searchStations, getStationsByUuids, fetchRandomStations, getStationsByTag, getColombianStations, getMoreColombianStations, filterStationsByStream } from './services/radioService.js';
+import { searchStations, getStationsByUuids, fetchRandomStations, getStationsByTag, getStationsByTagAggressive, getColombianStations, getMoreColombianStations, filterStationsByStream, getStationsByCountry, getMoreStationsByCountry } from './services/radioService.js';
 import { useFavorites } from './hooks/useFavorites.js';
 import Player from './components/Player.jsx';
 import StationCard from './components/StationCard.jsx';
@@ -14,6 +14,30 @@ import SEOHead from './components/SEOHead.jsx';
 import PWAInstallPrompt from './components/PWAInstallPrompt.jsx';
 import { HeartIcon, SunIcon, MoonIcon, SearchIcon, MenuIcon, GithubIcon, BriefcaseIcon, WhatsAppIcon, MicrophoneIcon, XIcon, ChevronUpIcon } from './components/Icons.jsx';
 import type { Station } from './types';
+import { AdSenseBlock } from './components/StationCard';
+
+// Declarar CONTINENTS, selectedContinent y filteredCountries aquí, antes de App
+export const CONTINENTS = [
+  { name: 'Todos los continentes', countries: [] },
+  { name: 'América', countries: [
+    'Argentina', 'Bolivia', 'Brasil', 'Chile', 'Colombia', 'Costa Rica', 'Cuba', 'Ecuador',
+    'El Salvador', 'Guatemala', 'Honduras', 'México', 'Nicaragua', 'Panamá', 'Paraguay',
+    'Perú', 'Puerto Rico', 'República Dominicana', 'Uruguay', 'Venezuela',
+    'Estados Unidos', 'Canadá', 'Jamaica', 'Haití', 'Trinidad y Tobago', 'Bahamas', 'Barbados', 'Belice', 'Dominica', 'Granada', 'Guyana', 'San Cristóbal y Nieves', 'Santa Lucía', 'San Vicente y las Granadinas', 'Surinam'
+  ] },
+  { name: 'Europa', countries: [
+    'España', 'Francia', 'Alemania', 'Italia', 'Reino Unido', 'Portugal', 'Países Bajos', 'Bélgica', 'Suiza', 'Suecia', 'Noruega', 'Dinamarca', 'Finlandia', 'Irlanda', 'Polonia', 'Rusia', 'Ucrania', 'Rumanía', 'Hungría', 'Grecia', 'Austria', 'República Checa', 'Eslovaquia', 'Bulgaria', 'Croacia', 'Serbia', 'Eslovenia', 'Estonia', 'Letonia', 'Lituania', 'Luxemburgo', 'Malta', 'Moldavia', 'Montenegro', 'Macedonia del Norte', 'Bosnia y Herzegovina', 'Albania'
+  ] },
+  { name: 'Asia', countries: [
+    'China', 'Japón', 'Corea del Sur', 'India', 'Indonesia', 'Tailandia', 'Vietnam', 'Filipinas', 'Malasia', 'Singapur', 'Pakistán', 'Bangladés', 'Arabia Saudita', 'Israel', 'Irán', 'Irak', 'Turquía', 'Kazajistán', 'Uzbekistán', 'Sri Lanka', 'Nepal', 'Camboya', 'Mongolia', 'Afganistán', 'Kuwait', 'Qatar', 'Emiratos Árabes Unidos', 'Jordania', 'Líbano', 'Siria', 'Omán', 'Yemen'
+  ] },
+  { name: 'África', countries: [
+    'Sudáfrica', 'Nigeria', 'Egipto', 'Argelia', 'Marruecos', 'Etiopía', 'Kenia', 'Ghana', 'Túnez', 'Angola', 'Mozambique', 'Senegal', 'Camerún', 'Costa de Marfil', 'Tanzania', 'Uganda', 'Zimbabue', 'República Democrática del Congo', 'Sudán', 'Libia', 'Botsuana', 'Namibia', 'Ruanda', 'Gabón', 'Mauricio', 'Seychelles', 'Madagascar', 'Malawi', 'Burkina Faso', 'Níger', 'Benín', 'Chad', 'Guinea', 'Cabo Verde', 'Somalia', 'Sierra Leona', 'Togo', 'Gambia', 'Liberia', 'República Centroafricana', 'Eritrea', 'Guinea-Bisáu', 'Lesoto', 'Suazilandia', 'Yibuti', 'Comoras', 'Santo Tomé y Príncipe'
+  ] },
+  { name: 'Oceanía', countries: [
+    'Australia', 'Nueva Zelanda', 'Fiyi', 'Papúa Nueva Guinea', 'Samoa', 'Tonga', 'Vanuatu', 'Islas Salomón', 'Micronesia', 'Islas Marshall', 'Palaos', 'Nauru', 'Tuvalu', 'Kiribati'
+  ] }
+];
 
 const PAGE_SIZE = 15; // Optimizado para carga rápida
 
@@ -101,52 +125,37 @@ const ContactContent = ({ t }: { t: (key: string) => string }) => (
 
 
 export default function App() {
+  // --- Hooks de estado y memo al inicio ---
   const [stations, setStations] = useState<Station[]>([]);
   const [currentStation, setCurrentStation] = useState<Station | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-  
   const [favoriteStations, setFavoriteStations] = useState<Station[]>([]);
   const [isLoadingFavorites, setIsLoadingFavorites] = useState(false);
   const { favoriteUuids, toggleFavorite, isFavorite } = useFavorites();
-  
   const [view, setView] = useState('default');
   const [isRandomLoading, setIsRandomLoading] = useState(false);
   const [isColombianLoading, setIsColombianLoading] = useState(false);
-
   const [theme, setTheme] = useState(localStorage.getItem('theme') || 'light');
   const [language, setLanguage] = useState(localStorage.getItem('language') || 'es');
-  
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [modalContent, setModalContent] = useState(null);
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
   const [showServiceBanner, setShowServiceBanner] = useState(() => {
-    // Mostrar el banner por defecto, solo ocultarlo si fue cerrado explícitamente
     return localStorage.getItem('serviceBannerClosed') !== 'true';
   });
-  
   const [showScrollTop, setShowScrollTop] = useState(false);
-  
   const offset = useRef(0);
   const [hasMore, setHasMore] = useState(true);
-
   const menuRef = useRef<HTMLDivElement | null>(null);
   const menuButtonRef = useRef<HTMLButtonElement | null>(null);
-  
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
   const [isListening, setIsListening] = useState(false);
   const [voiceError, setVoiceError] = useState(null);
   const recognitionRef = useRef<any>(null);
   const [playbackErrorMsg, setPlaybackErrorMsg] = useState<string | null>(null);
-
-  // Simplificar t para evitar errores de tipado
-  const t = useCallback((key: string) => {
-    // @ts-ignore
-    return translations[language]?.[key] || translations.en[key];
-  }, [language]);
-
   const BLOCKED_KEY = 'radioBlockedStations';
   const [blockedUuids, setBlockedUuids] = useState<string[]>(() => {
     try {
@@ -156,6 +165,198 @@ export default function App() {
       return [];
     }
   });
+  // Nuevo: estado para emisoras no disponibles
+  const [unavailableStations, setUnavailableStations] = useState<string[]>([]);
+  // --- Filtros de continente y país ---
+  const [selectedContinent, setSelectedContinent] = useState<string>('Todos los continentes');
+  const [selectedCountry, setSelectedCountry] = useState<string>('Latinoamérica');
+  const filteredCountries = useMemo(() => {
+    if (selectedContinent === 'Todos los continentes') {
+      return CONTINENTS.flatMap(c => c.countries).filter((v, i, a) => v && a.indexOf(v) === i);
+    }
+    const continent = CONTINENTS.find(c => c.name === selectedContinent);
+    return continent ? continent.countries : [];
+  }, [selectedContinent]);
+
+  // Diccionario de mapeo de países español → inglés (completo)
+  const COUNTRY_NAME_MAP: Record<string, string> = {
+    // Europa
+    'España': 'Spain',
+    'Francia': 'France',
+    'Alemania': 'Germany',
+    'Italia': 'Italy',
+    'Reino Unido': 'United Kingdom',
+    'Portugal': 'Portugal',
+    'Países Bajos': 'Netherlands',
+    'Bélgica': 'Belgium',
+    'Suiza': 'Switzerland',
+    'Suecia': 'Sweden',
+    'Noruega': 'Norway',
+    'Dinamarca': 'Denmark',
+    'Finlandia': 'Finland',
+    'Irlanda': 'Ireland',
+    'Polonia': 'Poland',
+    'Rusia': 'Russia',
+    'Ucrania': 'Ukraine',
+    'Rumanía': 'Romania',
+    'Hungría': 'Hungary',
+    'Grecia': 'Greece',
+    'Austria': 'Austria',
+    'República Checa': 'Czech Republic',
+    'Eslovaquia': 'Slovakia',
+    'Bulgaria': 'Bulgaria',
+    'Croacia': 'Croatia',
+    'Serbia': 'Serbia',
+    'Eslovenia': 'Slovenia',
+    'Estonia': 'Estonia',
+    'Letonia': 'Latvia',
+    'Lituania': 'Lithuania',
+    'Luxemburgo': 'Luxembourg',
+    'Malta': 'Malta',
+    'Moldavia': 'Moldova',
+    'Montenegro': 'Montenegro',
+    'Macedonia del Norte': 'North Macedonia',
+    'Bosnia y Herzegovina': 'Bosnia and Herzegovina',
+    'Albania': 'Albania',
+    // América
+    'Argentina': 'Argentina',
+    'Bolivia': 'Bolivia',
+    'Brasil': 'Brazil',
+    'Chile': 'Chile',
+    'Colombia': 'Colombia',
+    'Costa Rica': 'Costa Rica',
+    'Cuba': 'Cuba',
+    'Ecuador': 'Ecuador',
+    'El Salvador': 'El Salvador',
+    'Guatemala': 'Guatemala',
+    'Honduras': 'Honduras',
+    'México': 'Mexico',
+    'Nicaragua': 'Nicaragua',
+    'Panamá': 'Panama',
+    'Paraguay': 'Paraguay',
+    'Perú': 'Peru',
+    'Puerto Rico': 'Puerto Rico',
+    'República Dominicana': 'Dominican Republic',
+    'Uruguay': 'Uruguay',
+    'Venezuela': 'Venezuela',
+    'Estados Unidos': 'United States',
+    'Canadá': 'Canada',
+    'Jamaica': 'Jamaica',
+    'Haití': 'Haiti',
+    'Trinidad y Tobago': 'Trinidad and Tobago',
+    'Bahamas': 'Bahamas',
+    'Barbados': 'Barbados',
+    'Belice': 'Belize',
+    'Dominica': 'Dominica',
+    'Granada': 'Grenada',
+    'Guyana': 'Guyana',
+    'San Cristóbal y Nieves': 'Saint Kitts and Nevis',
+    'Santa Lucía': 'Saint Lucia',
+    'San Vicente y las Granadinas': 'Saint Vincent and the Grenadines',
+    'Surinam': 'Suriname',
+    // Asia
+    'China': 'China',
+    'Japón': 'Japan',
+    'Corea del Sur': 'South Korea',
+    'India': 'India',
+    'Indonesia': 'Indonesia',
+    'Tailandia': 'Thailand',
+    'Vietnam': 'Vietnam',
+    'Filipinas': 'Philippines',
+    'Malasia': 'Malaysia',
+    'Singapur': 'Singapore',
+    'Pakistán': 'Pakistan',
+    'Bangladés': 'Bangladesh',
+    'Arabia Saudita': 'Saudi Arabia',
+    'Israel': 'Israel',
+    'Irán': 'Iran',
+    'Irak': 'Iraq',
+    'Turquía': 'Turkey',
+    'Kazajistán': 'Kazakhstan',
+    'Uzbekistán': 'Uzbekistan',
+    'Sri Lanka': 'Sri Lanka',
+    'Nepal': 'Nepal',
+    'Camboya': 'Cambodia',
+    'Mongolia': 'Mongolia',
+    'Afganistán': 'Afghanistan',
+    'Kuwait': 'Kuwait',
+    'Qatar': 'Qatar',
+    'Emiratos Árabes Unidos': 'United Arab Emirates',
+    'Jordania': 'Jordan',
+    'Líbano': 'Lebanon',
+    'Siria': 'Syria',
+    'Omán': 'Oman',
+    'Yemen': 'Yemen',
+    // África
+    'Sudáfrica': 'South Africa',
+    'Nigeria': 'Nigeria',
+    'Egipto': 'Egypt',
+    'Argelia': 'Algeria',
+    'Marruecos': 'Morocco',
+    'Etiopía': 'Ethiopia',
+    'Kenia': 'Kenya',
+    'Ghana': 'Ghana',
+    'Túnez': 'Tunisia',
+    'Angola': 'Angola',
+    'Mozambique': 'Mozambique',
+    'Senegal': 'Senegal',
+    'Camerún': 'Cameroon',
+    'Costa de Marfil': 'Ivory Coast',
+    'Tanzania': 'Tanzania',
+    'Uganda': 'Uganda',
+    'Zimbabue': 'Zimbabwe',
+    'República Democrática del Congo': 'Democratic Republic of the Congo',
+    'Sudán': 'Sudan',
+    'Libia': 'Libya',
+    'Botsuana': 'Botswana',
+    'Namibia': 'Namibia',
+    'Ruanda': 'Rwanda',
+    'Gabón': 'Gabon',
+    'Mauricio': 'Mauritius',
+    'Seychelles': 'Seychelles',
+    'Madagascar': 'Madagascar',
+    'Malawi': 'Malawi',
+    'Burkina Faso': 'Burkina Faso',
+    'Níger': 'Niger',
+    'Benín': 'Benin',
+    'Chad': 'Chad',
+    'Guinea': 'Guinea',
+    'Cabo Verde': 'Cape Verde',
+    'Somalia': 'Somalia',
+    'Sierra Leona': 'Sierra Leone',
+    'Togo': 'Togo',
+    'Gambia': 'Gambia',
+    'Liberia': 'Liberia',
+    'República Centroafricana': 'Central African Republic',
+    'Eritrea': 'Eritrea',
+    'Guinea-Bisáu': 'Guinea-Bissau',
+    'Lesoto': 'Lesotho',
+    'Suazilandia': 'Eswatini',
+    'Yibuti': 'Djibouti',
+    'Comoras': 'Comoros',
+    'Santo Tomé y Príncipe': 'Sao Tome and Principe',
+    // Oceanía
+    'Australia': 'Australia',
+    'Nueva Zelanda': 'New Zealand',
+    'Fiyi': 'Fiji',
+    'Papúa Nueva Guinea': 'Papua New Guinea',
+    'Samoa': 'Samoa',
+    'Tonga': 'Tonga',
+    'Vanuatu': 'Vanuatu',
+    'Islas Salomón': 'Solomon Islands',
+    'Micronesia': 'Micronesia',
+    'Islas Marshall': 'Marshall Islands',
+    'Palaos': 'Palau',
+    'Nauru': 'Nauru',
+    'Tuvalu': 'Tuvalu',
+    'Kiribati': 'Kiribati'
+  };
+
+  // Simplificar t para evitar errores de tipado
+  const t = useCallback((key: string) => {
+    // @ts-ignore
+    return translations[language]?.[key] || translations.en[key];
+  }, [language]);
 
   const filterBlocked = useCallback((stations: Station[]) => stations.filter((s: Station) => !blockedUuids.includes(s.stationuuid)), [blockedUuids]);
 
@@ -185,73 +386,198 @@ export default function App() {
 
   // Helper para obtener suficientes emisoras funcionales
   async function fetchEnoughFunctionalStations(apiCall: (offset?: number) => Promise<Station[]>, pageSize = PAGE_SIZE, maxTries = 10) {
-    let result = [];
-    let offset = 0;
+    let result: Station[] = [];
+    let offsetValue = 0;
     let tries = 0;
     while (result.length < pageSize && tries < maxTries) {
-      const stations = await apiCall(offset);
-      if (!stations || stations.length === 0) break;
+      const stations = await apiCall(offsetValue);
+      if (!stations || stations.length === 0) {
+        // Si no hay más emisoras, intentar con un offset diferente
+        offsetValue += pageSize;
+        tries++;
+        continue;
+      }
       const filtered = filterBlocked(stations);
-      const functional = await filterStationsByStream(filtered, 1000);
+      // Reducir el timeout para que no bloquee tanto y obtener más emisoras
+      const functional = await filterStationsByStream(filtered, 300);
       result = result.concat(functional);
-      offset += stations.length;
+      offsetValue += stations.length;
       tries++;
-      if (stations.length < pageSize) break; // No hay más en la API
+      // Continuar intentando incluso si no hay emisoras funcionales
+      if (stations.length === 0 && tries > 5) {
+        // Intentar con un offset mucho mayor
+        offsetValue += pageSize * 10;
+      }
     }
     return result.slice(0, pageSize);
   }
 
+  // Nuevo: contador de intentos vacíos consecutivos
+  const [emptyTries, setEmptyTries] = useState(0);
+  const MAX_EMPTY_TRIES = 20; // Aumentado para permitir más intentos
+
   const fetchStationsCallback = useCallback(async (apiCall: (offset?: number) => Promise<Station[]>, isNewSearch: boolean) => {
+    // Prevenir múltiples llamadas simultáneas
+    if (isLoading) return;
+    
+    // Prevenir loop infinito - máximo 50 intentos
+    if (emptyTries > 50) {
+      setHasMore(false);
+      return;
+    }
+    
     if(isNewSearch) {
         offset.current = 0;
         setStations([]);
         setHasMore(true);
+        setEmptyTries(0);
     }
     setIsLoading(true);
     setError(null);
     try {
-      // Usar el helper para obtener suficientes emisoras funcionales
-      const fastStations = await fetchEnoughFunctionalStations(apiCall, PAGE_SIZE);
-      setHasMore(fastStations.length >= PAGE_SIZE);
-      setStations(prev => isNewSearch ? fastStations : [...prev, ...fastStations]);
-      offset.current += fastStations.length;
+      // Llamar directamente a la API con el offset actual
+      const newStations = await apiCall(offset.current);
+      if (newStations && newStations.length > 0) {
+        const filtered = filterBlocked(newStations);
+        // Usar directamente las emisoras filtradas sin verificar streams
+        setStations(prev => isNewSearch ? filtered : [...prev, ...filtered]);
+        offset.current += newStations.length;
+        setHasMore(true);
+        setEmptyTries(0);
+      } else {
+        // Si no hay emisoras, incrementar offset y seguir intentando
+        offset.current += PAGE_SIZE;
+        setHasMore(true);
+        setEmptyTries(prev => prev + 1);
+      }
     } catch (err) {
       console.error("Failed to fetch stations:", err);
-      // No mostrar error al usuario
+      // Incrementar offset y seguir intentando
+      offset.current += PAGE_SIZE;
+      setHasMore(true);
     } finally {
       setIsLoading(false);
     }
-  }, [t, filterBlocked]);
+  }, [isLoading, filterBlocked, PAGE_SIZE, emptyTries]);
   
   const observer = useRef<IntersectionObserver | null>(null);
+  
+  // Lista de países de Latinoamérica (puedes ampliar esta lista)
+  const LATAM_COUNTRIES = [
+    'Argentina', 'Bolivia', 'Brasil', 'Chile', 'Colombia', 'Costa Rica', 'Cuba', 'Ecuador',
+    'El Salvador', 'Guatemala', 'Honduras', 'México', 'Nicaragua', 'Panamá', 'Paraguay',
+    'Perú', 'Puerto Rico', 'República Dominicana', 'Uruguay', 'Venezuela'
+  ];
+
+  // Nueva función para obtener emisoras según país seleccionado
+  const fetchStationsByCountry = useCallback(async (offset = 0) => {
+    if (selectedCountry === 'Latinoamérica') {
+      return getStationsByCountry(LATAM_COUNTRIES, PAGE_SIZE, offset);
+    } else if (
+      (selectedCountry === 'Todos' || selectedCountry === 'Todos los países') &&
+      (selectedContinent === 'Todos los continentes')
+    ) {
+      // Sin filtro: traer emisoras globales
+      return getStationsByCountry('', PAGE_SIZE, offset);
+    } else if (selectedCountry === 'Todos' || selectedCountry === 'Todos los países') {
+      // Obtener emisoras de todos los países del continente seleccionado
+      let perCountry = 15;
+      if (selectedContinent === 'Europa') {
+        perCountry = 25;
+      } else if (selectedContinent === 'América') {
+        perCountry = 20;
+      }
+      
+      const results = await Promise.all(
+        filteredCountries.map(async (country) => {
+          const apiCountry = COUNTRY_NAME_MAP[country] || country;
+          let stations = await getStationsByCountry(apiCountry, perCountry, offset);
+          if (!stations || stations.length === 0) {
+            stations = await searchStations(apiCountry, perCountry, offset);
+          }
+          if (!stations || stations.length === 0) {
+            stations = await getStationsByTag(apiCountry.toLowerCase(), perCountry, offset);
+          }
+          return stations;
+        })
+      );
+      // Aplanar y eliminar duplicados por stationuuid
+      const allStations = results.flat();
+      const uniqueStations = allStations.filter((station, index, self) =>
+        index === self.findIndex(s => s.stationuuid === station.stationuuid)
+      );
+      return uniqueStations.sort((a, b) => (b.votes || 0) - (a.votes || 0));
+    } else {
+      // País específico seleccionado
+      const apiCountry = COUNTRY_NAME_MAP[selectedCountry] || selectedCountry;
+      let stations = await getStationsByCountry(apiCountry, PAGE_SIZE, offset);
+      if (!stations || stations.length === 0) {
+        stations = await searchStations(apiCountry, PAGE_SIZE, offset);
+      }
+      if (!stations || stations.length === 0) {
+        stations = await getStationsByTag(apiCountry.toLowerCase(), PAGE_SIZE, offset);
+      }
+      return stations;
+    }
+  }, [selectedCountry, selectedContinent, filteredCountries, PAGE_SIZE, COUNTRY_NAME_MAP]);
+
+  // Función simple para cargar más emisoras
+  const loadMoreStations = useCallback(async () => {
+    if (isLoading) return;
+    
+    setIsLoading(true);
+    try {
+      let newStations: Station[] = [];
+      
+      if (view === 'search' && debouncedSearchTerm) {
+        newStations = await searchStations(debouncedSearchTerm, PAGE_SIZE, offset.current);
+      } else if (view === 'random') {
+        return; // No cargar más en vista aleatoria
+      } else {
+        newStations = await fetchStationsByCountry(offset.current);
+      }
+      
+      if (newStations && newStations.length > 0) {
+        setStations(prev => [...prev, ...newStations]);
+        offset.current += newStations.length;
+      } else {
+        setHasMore(false);
+      }
+    } catch (err) {
+      setHasMore(false);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [isLoading, PAGE_SIZE, view, debouncedSearchTerm, fetchStationsByCountry]);
+
+  // Modificar el observer para infinite scroll global
   const lastStationElementRef = useCallback((node: Element | null) => {
-    if (isLoading || !hasMore) return;
-    if (observer.current) observer.current.disconnect();
+    if (isLoading) return;
+    
+    if (observer.current) {
+      observer.current.disconnect();
+    }
     
     observer.current = new IntersectionObserver(entries => {
-      if (entries[0].isIntersecting) {
-          let apiCall: ((offset?: number) => Promise<Station[]>) | null = null;
-          if (view === 'default') {
-            // Cargar más emisoras latinas y colombianas
-            apiCall = async (offset) => {
-              const latinoStations = await getStationsByTag('latino', PAGE_SIZE, offset);
-              const colombianStations = await getMoreColombianStations(PAGE_SIZE, offset);
-              return [...latinoStations, ...colombianStations];
-            };
-          } else if (view === 'colombian') {
-            apiCall = (offset) => getMoreColombianStations(PAGE_SIZE, offset);
-          } else if (view === 'search' && debouncedSearchTerm) {
-            apiCall = (offset) => searchStations(debouncedSearchTerm, PAGE_SIZE, offset);
-          }
-          
-          if (apiCall) {
-              fetchStationsCallback(apiCall, false);
-          }
+      if (entries[0].isIntersecting && !isLoading) {
+        loadMoreStations();
       }
     });
+    
+    if (node) {
+      observer.current.observe(node);
+    }
+  }, [isLoading, loadMoreStations]);
 
-    if (node) observer.current.observe(node);
-  }, [isLoading, hasMore, view, debouncedSearchTerm, fetchStationsCallback]);
+  // Cambiar la carga inicial para priorizar Latinoamérica
+  useEffect(() => {
+    if (view === 'default') {
+      setStations([]);
+      setHasMore(true);
+      offset.current = 0;
+      fetchStationsCallback(fetchStationsByCountry, true);
+    }
+  }, [selectedCountry, view]);
 
   useEffect(() => {
     // Do not trigger search changes while a random search is loading to prevent race conditions.
@@ -260,15 +586,24 @@ export default function App() {
     if (view === 'search' && !debouncedSearchTerm) {
       // If search is cleared, go home
       setView('default');
-      fetchStationsCallback((offset) => getStationsByTag('latino', PAGE_SIZE, 0));
-    } else if (debouncedSearchTerm) {
-      if (view !== 'search') {
-        setView('search');
-      }
-      fetchStationsCallback((offset) => searchStations(debouncedSearchTerm, PAGE_SIZE, offset));
+    } else if (debouncedSearchTerm && view === 'search') {
+      // Cargar búsqueda inicial
+      setIsLoading(true);
+      searchStations(debouncedSearchTerm, PAGE_SIZE, 0)
+        .then(stations => {
+          const filtered = filterBlocked(stations);
+          setStations(filtered);
+          offset.current = stations.length;
+          setHasMore(stations.length >= PAGE_SIZE);
+        })
+        .catch(err => {
+          console.error("Search failed:", err);
+        })
+        .finally(() => {
+          setIsLoading(false);
+        });
     }
-
-  }, [debouncedSearchTerm, fetchStationsCallback, view, isRandomLoading]);
+  }, [debouncedSearchTerm, view, isRandomLoading, filterBlocked, PAGE_SIZE]);
 
   useEffect(() => {
     document.documentElement.lang = language;
@@ -299,32 +634,18 @@ export default function App() {
     };
   }, [isMenuOpen]);
 
-  // Cambia la carga inicial para usar PAGE_SIZE
+  // Cambia la carga inicial para usar PAGE_SIZE - solo una vez al montar
   useEffect(() => {
     const loadInitialStations = async () => {
       setIsLoading(true);
       setError(null);
       try {
-        // Usar el helper para obtener suficientes emisoras funcionales
-        const fastLatino = await fetchEnoughFunctionalStations((offset) => getStationsByTag('latino', PAGE_SIZE, offset), PAGE_SIZE);
-        setStations(fastLatino);
-        setHasMore(fastLatino.length >= PAGE_SIZE);
-        offset.current = fastLatino.length;
-        // Cargar emisoras colombianas en segundo plano (sin bloquear la UI)
-        const colombianStationsPromise = getColombianStations(PAGE_SIZE);
-        colombianStationsPromise.then(async colombianStations => {
-          const allStations = [...fastLatino, ...colombianStations];
-          const uniqueStations = allStations.filter((station, index, self) => 
-            index === self.findIndex(s => s.stationuuid === station.stationuuid)
-          );
-          const sortedStations = uniqueStations.sort((a, b) => (b.votes || 0) - (a.votes || 0));
-          const fastFinal = await fetchEnoughFunctionalStations(async (offset) => sortedStations.slice(offset, offset + PAGE_SIZE), PAGE_SIZE);
-          setStations(fastFinal);
-          setHasMore(fastFinal.length >= PAGE_SIZE);
-          offset.current = fastFinal.length;
-        }).catch(err => {
-          console.warn("Error loading Colombian stations:", err);
-        });
+        // Usar la función agresiva para obtener más emisoras
+        const fastLatino = await getStationsByTagAggressive('latino', PAGE_SIZE * 2, 0);
+        const filtered = filterBlocked(fastLatino);
+        setStations(filtered);
+        setHasMore(true); // Siempre permitir más carga
+        offset.current = PAGE_SIZE * 2;
       } catch (err) {
         console.error("Failed to fetch initial stations:", err);
         // No mostrar error al usuario
@@ -333,7 +654,7 @@ export default function App() {
       }
     };
     loadInitialStations();
-  }, [filterBlocked, t]);
+  }, []); // Solo ejecutar al montar el componente
 
   const toggleTheme = () => {
     setTheme(theme === 'light' ? 'dark' : 'light');
@@ -351,9 +672,10 @@ export default function App() {
     }
   };
   
+  // Mejorar el manejo de errores de reproducción
   const handlePlaybackError = useCallback((stationUuid: string) => {
-    console.warn(`Removing broken station: ${stationUuid}`);
-    setStations(prev => prev.filter(s => s.stationuuid !== stationUuid));
+    console.warn(`Marking station as unavailable: ${stationUuid}`);
+    setUnavailableStations(prev => prev.includes(stationUuid) ? prev : [...prev, stationUuid]);
     setBlockedUuids(prev => {
       if (!prev.includes(stationUuid)) {
         const updated = [...prev, stationUuid];
@@ -366,12 +688,12 @@ export default function App() {
     if (isFavorite(stationUuid)) {
       toggleFavorite(stationUuid);
     }
-    
+
     if (currentStation?.stationuuid === stationUuid) {
       setCurrentStation(null);
       setIsPlaying(false);
-      setPlaybackErrorMsg(t('error'));
-      setTimeout(() => setPlaybackErrorMsg(null as any), 5000); // Oculta el error después de 5s
+      setPlaybackErrorMsg(t('error') + ': ' + t('notAvailable'));
+      setTimeout(() => setPlaybackErrorMsg(null), 5000); // Oculta el error después de 5s
     }
   }, [currentStation, isFavorite, toggleFavorite, t]);
 
@@ -437,7 +759,7 @@ export default function App() {
     setSearchTerm('');
     if (view !== 'default') {
       setView('default');
-      fetchStationsCallback((offset) => getStationsByTag('latino', PAGE_SIZE, 0));
+      fetchStationsCallback((offset) => getStationsByTag('latino', PAGE_SIZE, 0), true);
     }
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [view, fetchStationsCallback]);
@@ -474,7 +796,7 @@ export default function App() {
         console.log('Voice recognition started');
       };
 
-      recognition.onresult = (event: SpeechRecognitionEvent) => {
+      recognition.onresult = (event: any) => {
         let finalTranscript = '';
         let interimTranscript = '';
 
@@ -497,7 +819,7 @@ export default function App() {
         }
       };
 
-      recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+      recognition.onerror = (event: any) => {
         console.error('Voice recognition error:', event.error);
         setVoiceError(t('voiceSearchError'));
         setIsListening(false);
@@ -576,6 +898,19 @@ export default function App() {
       setView('default');
     }
   }, [debouncedSearchTerm, stations]);
+
+  // Si el país seleccionado no está en el continente, resetearlo SOLO si no es válido
+  useEffect(() => {
+    if (
+      selectedCountry !== 'Latinoamérica' &&
+      selectedCountry !== 'Todos' &&
+      selectedCountry !== 'Todos los países' &&
+      !filteredCountries.includes(selectedCountry)
+    ) {
+      // Solo resetear si el país no es válido en el continente actual
+      setSelectedCountry(filteredCountries.length > 0 ? filteredCountries[0] : 'Todos');
+    }
+  }, [selectedContinent, filteredCountries, selectedCountry]);
 
   return (
     <div className="min-h-screen text-gray-800 dark:text-gray-200 font-sans flex flex-col overflow-x-hidden">
@@ -657,7 +992,31 @@ export default function App() {
 
         {view === 'default' && showServiceBanner && <ServiceBanner t={t} onClose={closeServiceBanner} />}
 
-
+        {/* Filtro visual para elegir país y continente */}
+        <div className="mb-4 flex flex-col sm:flex-row flex-wrap gap-2 items-stretch sm:items-center">
+          <label className="font-semibold mr-2 sm:mb-0 mb-1">Continente:</label>
+          <select
+            className="p-2 rounded border dark:bg-gray-800 dark:text-white w-full sm:w-auto"
+            value={selectedContinent}
+            onChange={e => setSelectedContinent(e.target.value)}
+          >
+            {CONTINENTS.map(cont => (
+              <option key={cont.name} value={cont.name}>{cont.name}</option>
+            ))}
+          </select>
+          <label className="font-semibold mx-2 sm:mb-0 mb-1">País:</label>
+          <select
+            className="p-2 rounded border dark:bg-gray-800 dark:text-white w-full sm:w-auto"
+            value={selectedCountry}
+            onChange={e => setSelectedCountry(e.target.value)}
+          >
+            <option value="Latinoamérica">Latinoamérica</option>
+            {filteredCountries.map(country => (
+              <option key={country} value={country}>{country}</option>
+            ))}
+            <option value="Todos">Todos los países</option>
+          </select>
+        </div>
 
         <div className="flex justify-between items-baseline mb-6">
           <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100 truncate">{headerTitle}</h2>
@@ -670,20 +1029,12 @@ export default function App() {
           <div className="flex justify-center items-center h-64"><Spinner className="w-12 h-12 text-brand-500" /></div>
         ) : stations.length > 0 ? (
           <>
-            <FixedSizeList
-              height={600} // Altura fija del contenedor de la lista virtualizada
-              itemCount={stations.length} // Número total de elementos en la lista
-              itemSize={150} // Altura estimada de cada elemento (ajusta según el diseño de StationCard)
-              width="100%"
-              itemData={{ stations, handlePlay, isFavorite, toggleFavorite, isPlaying, currentStation, t, lastStationElementRef }}
-            >
-              {({ index, style, data }) => {
-                const { stations, handlePlay, isFavorite, toggleFavorite, isPlaying, currentStation, t, lastStationElementRef } = data;
-                const station = stations[index];
+            <div className="space-y-4">
+              {stations.map((station, index) => {
                 const isLastItem = index === stations.length - 1;
-
+                const isUnavailable = unavailableStations?.includes(station.stationuuid);
                 return (
-                  <div style={style} ref={isLastItem ? lastStationElementRef : null}>
+                  <div key={station.stationuuid} ref={isLastItem ? lastStationElementRef : null}>
                     <StationCard
                       station={station}
                       onPlay={handlePlay}
@@ -692,19 +1043,19 @@ export default function App() {
                       isPlaying={isPlaying}
                       currentStationUuid={currentStation?.stationuuid ?? null}
                       t={t}
+                      isUnavailable={isUnavailable}
                     />
                   </div>
                 );
-              }}
-            </FixedSizeList>
+              })}
+            </div>
+            <AdSenseBlock />
             {(isLoading || isColombianLoading) && stations.length > 0 && (
                 <div className="flex justify-center items-center h-24 col-span-1 md:col-span-2 lg:col-span-3">
                     <Spinner className="w-8 h-8 text-brand-500" />
                 </div>
             )}
-            {!hasMore && stations.length > 0 && view !== 'random' && (
-                 <p className="text-center text-gray-500 dark:text-gray-400 mt-8 col-span-1 md:col-span-2 lg:col-span-3">{t('endOfList')}</p>
-            )}
+            {/* Eliminado el mensaje de "final de lista" para permitir scroll infinito */}
           </>
         ) : (
           <div className="text-center text-gray-500 dark:text-gray-400 h-64 flex flex-col justify-center items-center">

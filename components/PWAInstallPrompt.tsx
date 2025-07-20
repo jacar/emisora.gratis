@@ -11,15 +11,17 @@ const PWAInstallPrompt = ({ t }) => {
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
   const [showManualInstall, setShowManualInstall] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
+  const [hasDismissed, setHasDismissed] = useState(false);
+  const [hasScrolled, setHasScrolled] = useState(false); // NUEVO: para detectar el primer scroll
 
   useEffect(() => {
-    // Verificar si ya está instalada
     setIsStandalone(window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone);
 
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
-      setShowInstallPrompt(true);
+      // Solo mostrar si ya se hizo scroll y no se ha cerrado
+      if (hasScrolled && !hasDismissed) setShowInstallPrompt(true);
     };
 
     const handleAppInstalled = () => {
@@ -31,40 +33,38 @@ const PWAInstallPrompt = ({ t }) => {
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     window.addEventListener('appinstalled', handleAppInstalled);
 
-    // Mostrar botón manual después de 1 segundo en móvil
-    const timer = setTimeout(() => {
-      if (!showInstallPrompt && !isStandalone) {
-        // En móvil, mostrar siempre el botón manual
-        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-        if (isMobile) {
-          setShowManualInstall(true);
-        }
-      }
-    }, 1000);
+    // Detectar primer scroll
+    const onScroll = () => {
+      if (!hasScrolled) setHasScrolled(true);
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
       window.removeEventListener('appinstalled', handleAppInstalled);
-      clearTimeout(timer);
+      window.removeEventListener('scroll', onScroll);
     };
-  }, [showInstallPrompt, isStandalone]);
+  }, [showInstallPrompt, isStandalone, hasDismissed, hasScrolled]);
+
+  // Mostrar el banner solo después del primer scroll
+  useEffect(() => {
+    if (hasScrolled && deferredPrompt && !hasDismissed) {
+      setShowInstallPrompt(true);
+    }
+  }, [hasScrolled, deferredPrompt, hasDismissed]);
 
   const handleInstallClick = async () => {
     if (deferredPrompt) {
-      // Si hay prompt automático, usarlo
       deferredPrompt.prompt();
       const { outcome } = await deferredPrompt.userChoice;
-      
       if (outcome === 'accepted') {
         setShowInstallPrompt(false);
         setShowManualInstall(false);
         setDeferredPrompt(null);
       }
     } else {
-      // Si no hay prompt automático, mostrar instrucciones manuales
       const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
       const isAndroid = /Android/.test(navigator.userAgent);
-      
       if (isIOS) {
         alert('Para instalar: toca el botón compartir y selecciona "Añadir a pantalla de inicio"');
       } else if (isAndroid) {
@@ -79,15 +79,15 @@ const PWAInstallPrompt = ({ t }) => {
     setShowInstallPrompt(false);
     setShowManualInstall(false);
     setDeferredPrompt(null);
+    setHasDismissed(true);
   };
 
-  // No mostrar nada si ya está instalada
-  if (isStandalone) return null;
+  if (isStandalone || hasDismissed || !hasScrolled) return null;
 
   // Banner automático
   if (showInstallPrompt) {
     return (
-      <div className="fixed bottom-20 left-4 right-4 z-50 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 p-4 animate-bounce">
+      <div className="fixed bottom-20 left-4 right-4 z-50 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 bg-brand-500 rounded-lg flex items-center justify-center">
@@ -121,21 +121,7 @@ const PWAInstallPrompt = ({ t }) => {
     );
   }
 
-  // Botón manual
-  if (showManualInstall) {
-    return (
-      <div className="fixed bottom-4 right-4 z-50">
-        <button
-          onClick={handleInstallClick}
-          className="flex items-center space-x-2 px-4 py-3 bg-brand-500 text-white rounded-full shadow-lg hover:bg-brand-600 transition-colors animate-pulse"
-          title={t('installApp') || 'Instalar Radio.gratis'}
-        >
-          <DownloadIcon className="w-5 h-5" />
-          <span className="hidden sm:inline">{t('install') || 'Instalar'}</span>
-        </button>
-      </div>
-    );
-  }
+  // Eliminar el botón manual flotante, solo mostrar el popup/banner una vez tras el scroll
 
   return null;
 };

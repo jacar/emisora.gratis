@@ -78,6 +78,7 @@ We may update this Privacy Policy from time to time. We encourage you to review 
     installApp: "Install Radio.gratis",
     installAppDesc: "Install the app for faster access",
     install: "Install",
+    notAvailable: "Not available",
   },
   es: {
     title: "Radio.gratis",
@@ -157,6 +158,7 @@ Podemos actualizar esta Política de Privacidad de vez en cuando. Te recomendamo
     installApp: "Instalar Radio.gratis",
     installAppDesc: "Instala la app para acceder más rápido",
     install: "Instalar",
+    notAvailable: "No disponible",
   },
 };
 

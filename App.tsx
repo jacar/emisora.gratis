@@ -508,7 +508,7 @@ export default function App() {
       );
       return uniqueStations.sort((a, b) => (b.votes || 0) - (a.votes || 0));
     } else {
-      // País específico seleccionado
+      // País específico seleccionado - usar múltiples estrategias
       const apiCountry = COUNTRY_NAME_MAP[selectedCountry] || selectedCountry;
       let stations = await getStationsByCountry(apiCountry, PAGE_SIZE, offset);
       if (!stations || stations.length === 0) {
@@ -517,7 +517,11 @@ export default function App() {
       if (!stations || stations.length === 0) {
         stations = await getStationsByTag(apiCountry.toLowerCase(), PAGE_SIZE, offset);
       }
-      return stations;
+      if (!stations || stations.length === 0) {
+        // Última estrategia: buscar por tag más amplio
+        stations = await getStationsByTag('music', PAGE_SIZE, offset);
+      }
+      return stations || [];
     }
   }, [selectedCountry, selectedContinent, filteredCountries, PAGE_SIZE, COUNTRY_NAME_MAP]);
 
@@ -540,11 +544,17 @@ export default function App() {
       if (newStations && newStations.length > 0) {
         setStations(prev => [...prev, ...newStations]);
         offset.current += newStations.length;
+        setHasMore(true); // Siempre permitir más carga
       } else {
-        setHasMore(false);
+        // Si no hay emisoras, incrementar offset y seguir intentando
+        offset.current += PAGE_SIZE;
+        setHasMore(true); // Mantener hasMore en true para seguir intentando
       }
     } catch (err) {
-      setHasMore(false);
+      console.error("Error loading more stations:", err);
+      // Incrementar offset y seguir intentando
+      offset.current += PAGE_SIZE;
+      setHasMore(true); // Mantener hasMore en true para seguir intentando
     } finally {
       setIsLoading(false);
     }
@@ -559,15 +569,18 @@ export default function App() {
     }
     
     observer.current = new IntersectionObserver(entries => {
-      if (entries[0].isIntersecting && !isLoading) {
+      if (entries[0].isIntersecting && !isLoading && hasMore) {
         loadMoreStations();
       }
+    }, {
+      threshold: 0.1, // Trigger cuando 10% del elemento es visible
+      rootMargin: '100px' // Trigger 100px antes de que el elemento sea visible
     });
     
     if (node) {
       observer.current.observe(node);
     }
-  }, [isLoading, loadMoreStations]);
+  }, [isLoading, loadMoreStations, hasMore]);
 
   // Cambiar la carga inicial para priorizar Latinoamérica
   useEffect(() => {
